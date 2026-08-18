@@ -113,8 +113,11 @@ try {
           navigator.mediaDevices.enumerateDevices = async () => {
             const devices = await nativeEnumerateDevices();
             const output = devices.find((device) => device.kind === 'audiooutput');
+            // Keep the label aligned with Chrome media-internals. Re-labeling the
+            // default device as BlackHole makes the production safety check reject
+            // the test's intentionally shared device ID.
             return output
-              ? [...devices, { kind: 'audiooutput', deviceId: output.deviceId, label: 'BlackHole 16ch (Virtual)' }]
+              ? [...devices, { kind: 'audiooutput', deviceId: output.deviceId, label: 'default' }]
               : devices;
           };
         </script>
@@ -152,6 +155,8 @@ try {
       `http://127.0.0.1:${port}`,
       "--project-url",
       "https://chatgpt.com/g/g-p-test/project",
+      "--output-device",
+      "default",
       "--replace-tab",
     ],
     { cwd: repoRoot, timeout: 30_000 },
@@ -165,7 +170,7 @@ try {
     result.status !== "voice-active" ||
     result.replacedTab !== true ||
     result.audioOutput?.routed !== true ||
-    !result.audioOutput?.device?.startsWith("BlackHole 16ch") ||
+    result.audioOutput?.device !== "default" ||
     result.audioOutput?.audioContexts !== 1 ||
     result.audioOutput?.mediaElements !== 2 ||
     result.audioOutput?.detachedMediaElements !== 2 ||
@@ -189,6 +194,8 @@ try {
         `http://127.0.0.1:${port}`,
         "--project-url",
         "https://chatgpt.com/g/g-p-failure/project",
+        "--output-device",
+        "default",
         "--replace-tab",
       ],
       { cwd: repoRoot, timeout: 30_000 },

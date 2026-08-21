@@ -4,7 +4,7 @@ set -eu
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 check_only=0
-release_url="${MEETRON_SETUP_RELEASE_URL:-https://github.com/bb8ad8/meeting-copilot/releases/latest}"
+release_url="${MEETRON_SETUP_RELEASE_URL:-https://github.com/bb8ad8/meetron/releases/latest}"
 receipt_id="${MEETRON_SETUP_RECEIPT_ID:-io.github.bb8ad8.meetron.audio.pkg}"
 no_open="${MEETRON_SETUP_NO_OPEN:-0}"
 

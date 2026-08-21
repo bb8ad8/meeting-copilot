@@ -1,6 +1,6 @@
 # Meetron
 
-[![CI](https://github.com/bb8ad8/meeting-copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/bb8ad8/meeting-copilot/actions/workflows/ci.yml)
+[![CI](https://github.com/bb8ad8/meetron/actions/workflows/ci.yml/badge.svg)](https://github.com/bb8ad8/meetron/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#動作環境)
 
@@ -20,7 +20,7 @@ ChatGPT Web Voiceを、Google Meetへ`GPT-Live`という別参加者として接
 6. 案内されたChrome拡張の読み込みとGoogle・ChatGPTへのログインだけを本人が行う
 
 ```text
-https://github.com/bb8ad8/meeting-copilot のMeetronをこのMacへcloneし、READMEの「AIアシスタントによるセットアップ」に従って、利用できる状態までセットアップしてください。安全に自動化できる確認とコマンドは進め、管理者認証、再起動、Chrome拡張の読み込み、Google・ChatGPTへのログインが必要になったら私へ案内してください。パスワードや認証コードをAIチャットへ入力するよう求めないでください。
+https://github.com/bb8ad8/meetron のMeetronをこのMacへcloneし、READMEの「AIアシスタントによるセットアップ」に従って、利用できる状態までセットアップしてください。安全に自動化できる確認とコマンドは進め、管理者認証、再起動、Chrome拡張の読み込み、Google・ChatGPTへのログインが必要になったら私へ案内してください。パスワードや認証コードをAIチャットへ入力するよう求めないでください。
 ```
 
 詳しいAI向け依頼文と役割分担は[AIアシスタントによるセットアップ](#aiアシスタントによるセットアップ推奨)にあります。
@@ -85,7 +85,7 @@ Meetronは、音声ドライバ、macOSの音声設定、2つのChrome環境、G
 ローカル操作に対応したAIアシスタントを開き、次の依頼文を渡してください。すでにリポジトリを取得している場合は、そのフォルダをAIに開かせてから依頼します。
 
 ```text
-https://github.com/bb8ad8/meeting-copilot のMeetronを、このMacで利用できる状態までセットアップしてください。
+https://github.com/bb8ad8/meetron のMeetronを、このMacで利用できる状態までセットアップしてください。
 
 README.mdを最初から最後まで読み、最初に環境診断と短い作業計画を示してください。これは非エンジニア向けのセットアップです。質問だけで止まらず、安全に実行できる確認、ダウンロード、コマンド、設定、ローカルテストはあなたが進めてください。
 
@@ -190,7 +190,7 @@ Project instructionsだけでは発話抑制を保証できません。会議側
 
 以下は、AIアシスタントが内部で実行する主なコマンドと、手動で問題を切り分ける場合の参考手順です。通常の初回導入では、利用者がすべてを自分で実行する必要はありません。
 
-一般利用では、最初にリポジトリ直下の`Meetron Setup.command`をダブルクリックします。未導入なら、セットアップが[GitHub Releases](https://github.com/bb8ad8/meeting-copilot/releases)とFinderを開き、ダウンロード済みの`MeetronAudio-*.pkg`を検証してインストーラを開きます。管理者認証後にMacを再起動し、同じファイルをもう一度開いてください。PKG利用時はXcode、Swift、Homebrewは不要です。
+一般利用では、最初にリポジトリ直下の`Meetron Setup.command`をダブルクリックします。未導入なら、セットアップが[GitHub Releases](https://github.com/bb8ad8/meetron/releases)とFinderを開き、ダウンロード済みの`MeetronAudio-*.pkg`を検証してインストーラを開きます。管理者認証後にMacを再起動し、同じファイルをもう一度開いてください。PKG利用時はXcode、Swift、Homebrewは不要です。
 
 AIアシスタントまたはターミナルから同じ処理を行う場合は次を実行します。
 
@@ -333,7 +333,7 @@ npm run test:package
 
 PKGをインストールして利用するだけのユーザーは、これらの開発者テストを実行する必要はありません。`./scripts/setup-meetron.sh --check-only`と`./scripts/check-env.sh`を使ってください。
 
-不具合報告では、macOSとChromeのバージョン、再現手順、`.meeting-copilot-runtime/meeting-launch.log`からアカウント情報や会議URLを除いた内容を[Issue](https://github.com/bb8ad8/meeting-copilot/issues)へ添えてください。修正提案は[CONTRIBUTING.md](CONTRIBUTING.md)に従ってください。セキュリティ上の問題は公開Issueへ書かず、[SECURITY.md](SECURITY.md)の連絡方法を利用してください。
+不具合報告では、macOSとChromeのバージョン、再現手順、`.meeting-copilot-runtime/meeting-launch.log`からアカウント情報や会議URLを除いた内容を[Issue](https://github.com/bb8ad8/meetron/issues)へ添えてください。修正提案は[CONTRIBUTING.md](CONTRIBUTING.md)に従ってください。セキュリティ上の問題は公開Issueへ書かず、[SECURITY.md](SECURITY.md)の連絡方法を利用してください。
 
 ## 配布上の注意
 

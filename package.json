@@ -6,12 +6,12 @@
   "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bb8ad8/meeting-copilot.git"
+    "url": "git+https://github.com/bb8ad8/meetron.git"
   },
   "bugs": {
-    "url": "https://github.com/bb8ad8/meeting-copilot/issues"
+    "url": "https://github.com/bb8ad8/meetron/issues"
   },
-  "homepage": "https://github.com/bb8ad8/meeting-copilot#readme",
+  "homepage": "https://github.com/bb8ad8/meetron#readme",
   "engines": {
     "node": ">=22"
   },

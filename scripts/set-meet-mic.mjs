@@ -137,8 +137,12 @@ const turnMicOff = [
 async function firstVisible(locators) {
   for (const locator of locators) {
     try {
-      if ((await locator.count()) > 0 && (await locator.first().isVisible())) {
-        return locator.first();
+      const count = await locator.count();
+      for (let index = 0; index < count; index += 1) {
+        const candidate = locator.nth(index);
+        if (await candidate.isVisible()) {
+          return candidate;
+        }
       }
     } catch {
       // Meet changes frequently; try the next representation of the control.
@@ -148,6 +152,19 @@ async function firstVisible(locators) {
 }
 
 async function currentState() {
+  const stateControls = page.locator("[data-is-muted]");
+  try {
+    const count = await stateControls.count();
+    for (let index = 0; index < count; index += 1) {
+      const candidate = stateControls.nth(index);
+      if (!(await candidate.isVisible())) continue;
+      const value = await candidate.getAttribute("data-is-muted");
+      if (value === "true") return "muted";
+      if (value === "false") return "unmuted";
+    }
+  } catch {
+    // Fall back to accessible labels when Meet does not expose data-is-muted.
+  }
   if (await firstVisible(turnMicOn)) {
     return "muted";
   }
@@ -155,6 +172,21 @@ async function currentState() {
     return "unmuted";
   }
   return "unavailable";
+}
+
+async function waitForState(expected, timeout = 500) {
+  const deadline = Date.now() + timeout;
+  let detected = await currentState();
+  while (detected !== expected && Date.now() < deadline) {
+    await page.waitForTimeout(50);
+    detected = await currentState();
+  }
+  return detected;
+}
+
+async function pressMicShortcut() {
+  await page.keyboard.press(process.platform === "darwin" ? "Meta+d" : "Control+d");
+  await page.waitForTimeout(300);
 }
 
 let before = await currentState();
@@ -201,20 +233,39 @@ const desired =
     : options.state;
 
 let usedKeyboardShortcut = false;
+let interaction = "none";
 if (before === "unavailable") {
   if (desired !== effectiveBefore) {
-    await page.keyboard.press(process.platform === "darwin" ? "Meta+d" : "Control+d");
+    await pressMicShortcut();
     usedKeyboardShortcut = true;
-    await page.waitForTimeout(500);
+    interaction = "keyboard";
   }
 } else if (before !== desired) {
-  const control = await firstVisible(desired === "unmuted" ? turnMicOn : turnMicOff);
+  const controls = desired === "unmuted" ? turnMicOn : turnMicOff;
+  let control = await firstVisible(controls);
   if (control) {
-    await control.click();
+    try {
+      await control.click({ timeout: 1_500 });
+      interaction = "click";
+    } catch {
+      // Re-read the current DOM below; the original control may have been replaced.
+    }
+    if ((await waitForState(desired, 300)) !== desired) {
+      control = await firstVisible(controls);
+      if (control) {
+        await control.click({ force: true, timeout: 1_500 }).catch(() => {});
+        interaction = "force-click";
+      }
+    }
+    if ((await waitForState(desired, 300)) !== desired) {
+      await pressMicShortcut();
+      usedKeyboardShortcut = true;
+      interaction = "keyboard";
+    }
   } else {
-    await page.keyboard.press(process.platform === "darwin" ? "Meta+d" : "Control+d");
+    await pressMicShortcut();
     usedKeyboardShortcut = true;
-    await page.waitForTimeout(500);
+    interaction = "keyboard";
   }
 }
 
@@ -243,6 +294,7 @@ process.stdout.write(
       detectedAfter,
       verified,
       usedKeyboardShortcut,
+      interaction,
     },
     null,
     2,

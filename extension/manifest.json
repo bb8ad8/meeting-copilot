@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Meetron Controls",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Local controls and status for the Meetron bridge.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuoAvvccpOLZ0grfX2yM/i1UoNIRaopU8R0o9h74CKzsts5uFPdWNw1qcKSCvoWIErzeygLEF29Zc4fyHhu9biIakEZWB23qFqACjiOjBI1YOZvf6L3odyQcO1EGAc9v0N3WLOSu2o7iDKaLY3xeCQx82r/6eQRbDH3Axkuw4YP0EbUquviCTTvnRvIOwW8bZCyCSyWRT6hj/xQYJAiT7PkxIxZNdpQ/aciN4I/EsAes5d6rjGQ6yU2rDrTZKSvWr5dfpUEBJp881SBCfooCznELXwRw+NhC07rW/VphNZUHQSbKiYAj5jk9huUuXi1UmvDFIJtzIQDkofi/g5lrUDQIDAQAB",
   "permissions": [

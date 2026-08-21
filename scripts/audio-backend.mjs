@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFile } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -154,7 +154,7 @@ export async function getAudioStatus() {
     const required = [backend.meetingToAI, backend.aiToMeeting];
     const devicesReady = required.every((target) => hasDevice(system.devices, target));
     return {
-      ready: devicesReady && isDevice(system.input, routing.chatgptInput),
+      ready: devicesReady,
       devicesReady,
       controller: system.controller,
       backend: backend.id,
@@ -168,6 +168,8 @@ export async function getAudioStatus() {
       requiredDevices: Object.fromEntries(required.map((target) => [target.name, hasDevice(system.devices, target)])),
       requiredDeviceNames: required.map((target) => target.name),
       routing,
+      systemDefaultsUnchanged: true,
+      inputMatchesLegacyRoute: isDevice(system.input, routing.chatgptInput),
       audioControlInstalled: system.controller === "coreaudio",
       switchAudioSourceInstalled: system.controller === "switchaudio-osx",
     };
@@ -210,43 +212,39 @@ function runtimeStatePath() {
 }
 
 export async function configureAudio({ dryRun = false } = {}) {
+  const { statePath } = runtimeStatePath();
+  const legacyRestorePending = existsSync(statePath);
+  const legacyRestore = legacyRestorePending && !dryRun
+    ? await restoreAudio()
+    : { restored: false, alreadyRestored: !legacyRestorePending };
   const system = await systemStatus();
   const backend = selectAudioBackend(system.devices);
   const routing = routingForBackend(backend);
   const required = [backend.meetingToAI, backend.aiToMeeting];
   const missing = required.filter((target) => !hasDevice(system.devices, target));
   if (missing.length) throw new Error(`Required audio device was not found: ${missing.map((item) => item.name).join(", ")}`);
-  if (dryRun) return { dryRun: true, backend: backend.id, input: routing.chatgptInput.name, outputUnchanged: true };
-
-  const { runtimeDir, statePath } = runtimeStatePath();
-  mkdirSync(runtimeDir, { recursive: true, mode: 0o700 });
-  if (!existsSync(statePath)) {
-    const temporary = `${statePath}.${process.pid}.tmp`;
-    writeFileSync(temporary, `${JSON.stringify({
-      input: system.input?.name || "",
-      inputUID: system.input?.uid || "",
-      output: system.output?.name || "",
-      outputUID: system.output?.uid || "",
-      outputChanged: false,
+  if (dryRun) {
+    return {
+      dryRun: true,
       backend: backend.id,
-      savedAt: new Date().toISOString(),
-    }, null, 2)}\n`, { mode: 0o600 });
-    renameSync(temporary, statePath);
-  }
-  await setDefault("input", routing.chatgptInput, system);
-  const resolved = await systemStatus();
-  if (!isDevice(resolved.input, routing.chatgptInput) ||
-      !isDevice(resolved.output, system.output || { name: "", uid: "" })) {
-    throw new Error("The requested audio routing could not be verified.");
+      input: system.input?.name || "",
+      output: system.output?.name || "",
+      legacyRestorePending,
+      systemDefaultsUnchanged: true,
+    };
   }
   return {
     ready: true,
     backend: backend.id,
-    input: resolved.input.name,
-    inputUID: resolved.input.uid,
-    output: resolved.output?.name || "",
+    input: system.input?.name || "",
+    inputUID: system.input?.uid || "",
+    output: system.output?.name || "",
+    outputUID: system.output?.uid || "",
+    inputUnchanged: true,
     outputUnchanged: true,
-    restorable: true,
+    systemDefaultsUnchanged: true,
+    restorable: false,
+    legacyRestore,
     routing,
   };
 }

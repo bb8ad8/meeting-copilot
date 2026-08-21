@@ -54,7 +54,7 @@ export MEETRON_NOTARY_KEY_ID='KEYID'
 export MEETRON_NOTARY_ISSUER='ISSUER-UUID'
 
 npm run package:audio:release
-MEETRON_REQUIRE_NOTARIZED=1 npm run test:package -- dist/release/MeetronAudio-0.1.0.pkg
+MEETRON_REQUIRE_NOTARIZED=1 npm run test:package -- dist/release/MeetronAudio-0.1.1.pkg
 ```
 
 Use only one notarization option. The package script signs the drivers and CLI,

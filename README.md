@@ -63,8 +63,7 @@ PKGは開発元が`Yuki Inaba`であることを自動確認します。パス�
 会議参加者の音声
   -> 専用ChromeのGPT参加者Meet
   -> Meet speaker: Meetron: Meeting to AI
-  -> macOS system input: Meetron: Meeting to AI
-  -> ChatGPT Voice input
+  -> 専用ChromeのChatGPT Voice input: Meetron: Meeting to AI
 
 ChatGPT Voice output
   -> ChatGPT VoiceタブだけをMeetron: AI to Meetingへ出力
@@ -74,7 +73,7 @@ ChatGPT Voice output
   -> 現在の物理出力（ヘッドホン／スピーカー）
 ```
 
-`Meeting to AI`と`AI to Meeting`を別々のステレオデバイスにすることで、ChatGPTの発話が自分の入力へ戻るループを防ぎます。ChatGPT Voiceタブ以外の音声とmacOSのシステム出力は変更しません。デバイスの識別には表示名ではなく安定したCore Audio UIDを使います。
+`Meeting to AI`と`AI to Meeting`を別々のステレオデバイスにすることで、ChatGPTの発話が自分の入力へ戻るループを防ぎます。入力と出力は専用Chrome内の対象タブごとに選択し、macOSのシステム既定入力・出力は変更しません。デバイスの識別には表示名ではなく安定したCore Audio UIDを使います。
 
 ## AIアシスタントによるセットアップ（推奨）
 
@@ -243,7 +242,7 @@ ChatGPTの`Meetron` Projectで毎回新しいチャットを作成し、Voiceを
 ./scripts/open-chatgpt-live.sh --restart-profile
 ```
 
-初回だけ、Meetと共用する専用ChromeでChatGPTへログインし、同じコマンドを再実行します。Project URLはローカル専用の`.meeting-copilot.env`へ保存し、リポジトリ配布には含めません。ChatGPT Webの入力はシステム既定の`Meetron: Meeting to AI`を使い、専用Chrome内のVoice出力だけを`Meetron: AI to Meeting`へ固定します。macOSのシステム出力は変更しません。
+初回だけ、Meetと共用する専用ChromeでChatGPTへログインし、同じコマンドを再実行します。Project URLはローカル専用の`.meeting-copilot.env`へ保存し、リポジトリ配布には含めません。専用Chrome内のChatGPT Voice入力を`Meetron: Meeting to AI`、Voice出力を`Meetron: AI to Meeting`へ固定します。macOSのシステム既定入力・出力は変更しません。
 
 ChatGPT Voiceを開始し、Meetの参加リクエストまでまとめて実行する場合:
 
@@ -264,7 +263,7 @@ ChatGPT Voiceを開始し、Meetの参加リクエストまでまとめて実行
 ./scripts/set-meet-mic.sh toggle
 ```
 
-常駐パネルの`終了・復元`は、GPT参加者のミュート、ChatGPT Voice停止、Meet退出、専用Meetタブの終了、起動前に保存したmacOS入出力への復元をまとめて実行します。音声設定だけを復元する場合は次のコマンドを使います。
+常駐パネルの`セッション終了`は、GPT参加者のミュート、ChatGPT Voice停止、Meet退出、専用Meetタブの終了をまとめて実行します。旧版が変更したmacOS音声設定の復旧データが残っている場合は、次のコマンドで一度だけ復元できます。
 
 ```bash
 ./scripts/restore-audio.sh

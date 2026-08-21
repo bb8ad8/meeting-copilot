@@ -4,7 +4,7 @@ set -euo pipefail
 
 driver_root="$(cd "$(dirname "$0")" && pwd)"
 repo_root="$(cd "$driver_root/../.." && pwd)"
-version="${MEETRON_AUDIO_VERSION:-${MEETING_COPILOT_AUDIO_VERSION:-0.1.0}}"
+version="${MEETRON_AUDIO_VERSION:-${MEETING_COPILOT_AUDIO_VERSION:-0.1.1}}"
 if [ "$#" -gt 0 ]; then
   package_path="$1"
 else

@@ -6,7 +6,7 @@ driver_root="$(cd "$(dirname "$0")" && pwd)"
 output_root="${MEETING_COPILOT_AUDIO_BUILD_DIR:-$driver_root/.build}"
 source_file="$driver_root/vendor/apple/MeetingCopilotAudio.c"
 ring_source="$driver_root/MeetingCopilotRingBuffer.c"
-version="${MEETING_COPILOT_AUDIO_VERSION:-0.1.0}"
+version="${MEETRON_AUDIO_VERSION:-${MEETING_COPILOT_AUDIO_VERSION:-0.1.1}}"
 signing_identity="${MEETING_COPILOT_AUDIO_SIGNING_IDENTITY:--}"
 deployment_target="${MEETING_COPILOT_AUDIO_DEPLOYMENT_TARGET:-13.0}"
 

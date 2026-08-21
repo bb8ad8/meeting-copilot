@@ -160,29 +160,44 @@ if configure_result="$(FAKE_AUDIO_STATE="$fake_audio_state" \
   MEETING_COPILOT_SWITCH_AUDIO_SOURCE="$fake_audio_source" \
   MEETING_COPILOT_RUNTIME_DIR="$fake_audio_runtime" \
   "$repo_root/scripts/configure-audio.sh")" &&
+  [ "$(sed -n '1p' "$fake_audio_state")" = 'Physical microphone' ] &&
   [ "$(sed -n '2p' "$fake_audio_state")" = 'Physical output' ] &&
+  [ ! -f "$fake_audio_runtime/audio-original.json" ] &&
   node -e '
-    const fs = require("node:fs");
     const result = JSON.parse(process.argv[1]);
-    const state = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-    if (!result.outputUnchanged || result.output !== "Physical output" || state.outputChanged !== false) process.exit(1);
-  ' "$configure_result" "$fake_audio_runtime/audio-original.json"; then
-  pass 'audio setup keeps the system output unchanged'
+    if (!result.systemDefaultsUnchanged || !result.inputUnchanged || !result.outputUnchanged) process.exit(1);
+    if (result.input !== "Physical microphone" || result.output !== "Physical output") process.exit(1);
+  ' "$configure_result"; then
+  pass 'audio setup keeps system input and output unchanged'
 else
-  fail 'audio setup keeps the system output unchanged'
+  fail 'audio setup keeps system input and output unchanged'
 fi
 
-if FAKE_AUDIO_STATE="$fake_audio_state" \
+mkdir -p "$fake_audio_runtime"
+printf 'BlackHole 2ch\nPhysical output\n' > "$fake_audio_state"
+cat > "$fake_audio_runtime/audio-original.json" <<'EOF'
+{
+  "input": "Physical microphone",
+  "output": "Physical output",
+  "outputChanged": false,
+  "backend": "blackhole"
+}
+EOF
+if migration_result="$(FAKE_AUDIO_STATE="$fake_audio_state" \
   MEETING_COPILOT_AUDIOCTL="" \
   MEETING_COPILOT_SWITCH_AUDIO_SOURCE="$fake_audio_source" \
   MEETING_COPILOT_RUNTIME_DIR="$fake_audio_runtime" \
-  "$repo_root/scripts/restore-audio.sh" >/dev/null &&
+  "$repo_root/scripts/configure-audio.sh")" &&
   [ "$(sed -n '1p' "$fake_audio_state")" = 'Physical microphone' ] &&
   [ "$(sed -n '2p' "$fake_audio_state")" = 'Physical output' ] &&
-  [ ! -f "$fake_audio_runtime/audio-original.json" ]; then
-  pass 'audio restore restores only the changed input'
+  [ ! -f "$fake_audio_runtime/audio-original.json" ] &&
+  node -e '
+    const result = JSON.parse(process.argv[1]);
+    if (!result.legacyRestore?.restored || !result.systemDefaultsUnchanged) process.exit(1);
+  ' "$migration_result"; then
+  pass 'audio setup restores the legacy system input once'
 else
-  fail 'audio restore preserves the unchanged system output'
+  fail 'audio setup restores the legacy system input once'
 fi
 
 if "$repo_root/scripts/restore-audio.sh" --help >/dev/null; then
@@ -375,6 +390,11 @@ elif [ -x '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' ]; then
     pass 'unified profile preserves Meet during Voice restart'
   else
     fail 'unified profile Voice restart isolation'
+  fi
+  if node "$repo_root/tests/set-meet-mic-test.mjs" >/dev/null; then
+    pass 'Meet microphone handles hidden and unstable controls'
+  else
+    fail 'Meet microphone hidden/unstable control handling'
   fi
   if node "$repo_root/tests/prepare-meet-test.mjs" >/dev/null; then
     pass 'Meet camera state handling'

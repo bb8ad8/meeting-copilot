@@ -2319,7 +2319,8 @@ static OSStatus	NullAudio_GetDevicePropertyData(AudioServerPlugInDriverRef inDri
 			//	will use to play their content on and FaceTime will use as it's microhphone.
 			//	Nearly all devices should allow for this.
 			FailWithAction(inDataSize < sizeof(UInt32), theAnswer = kAudioHardwareBadPropertySizeError, Done, "NullAudio_GetDevicePropertyData: not enough space for the return value of kAudioDevicePropertyDeviceCanBeDefaultDevice for the device");
-			*((UInt32*)outData) = 1;
+			//	Meetron routes this device per browser tab and must not replace the user's system default.
+			*((UInt32*)outData) = 0;
 			*outDataSize = sizeof(UInt32);
 			break;
 
@@ -2329,7 +2330,8 @@ static OSStatus	NullAudio_GetDevicePropertyData(AudioServerPlugInDriverRef inDri
 			//	other incidental or UI-related sounds on. Most devices should allow this
 			//	although devices with lots of latency may not want to.
 			FailWithAction(inDataSize < sizeof(UInt32), theAnswer = kAudioHardwareBadPropertySizeError, Done, "NullAudio_GetDevicePropertyData: not enough space for the return value of kAudioDevicePropertyDeviceCanBeDefaultSystemDevice for the device");
-			*((UInt32*)outData) = 1;
+			//	Keep alerts and other system audio on the device selected by the user.
+			*((UInt32*)outData) = 0;
 			*outDataSize = sizeof(UInt32);
 			break;
 

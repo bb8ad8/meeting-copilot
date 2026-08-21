@@ -1,6 +1,6 @@
 {
   "name": "meetron",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "private": true,
   "description": "Meetron: a local macOS bridge between ChatGPT Voice and web meetings",
   "license": "GPL-3.0-only",

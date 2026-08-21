@@ -32,6 +32,8 @@ const chrome = spawn(
     `--user-data-dir=${profileDir}`,
     "--no-first-run",
     "--disable-background-networking",
+    "--use-fake-device-for-media-stream",
+    "--use-fake-ui-for-media-stream",
     "about:blank",
   ],
   { stdio: "ignore" },
@@ -112,15 +114,19 @@ try {
           const nativeEnumerateDevices = navigator.mediaDevices.enumerateDevices.bind(navigator.mediaDevices);
           navigator.mediaDevices.enumerateDevices = async () => {
             const devices = await nativeEnumerateDevices();
+            const input = devices.find((device) => device.kind === 'audioinput');
             const output = devices.find((device) => device.kind === 'audiooutput');
-            return output
-              ? [...devices, { kind: 'audiooutput', deviceId: output.deviceId, label: 'Meetron: AI to Meeting (Virtual)' }]
-              : devices;
+            return [
+              ...devices,
+              ...(input ? [{ kind: 'audioinput', deviceId: input.deviceId, label: 'Meetron: Meeting to AI (Virtual)' }] : []),
+              ...(output ? [{ kind: 'audiooutput', deviceId: output.deviceId, label: 'Meetron: AI to Meeting (Virtual)' }] : []),
+            ];
           };
         </script>
         <button aria-label="Open profile menu">Profile</button>
         <textarea aria-label="New chat in Meetron"></textarea>
-        <button aria-label="Start voice" onclick="
+        <button aria-label="Start voice" onclick="void (async () => {
+          window.__testVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           window.__testVoiceContext = new AudioContext();
           window.__testAudioConstructorElement = new Audio();
           window.__testCreatedAudioElement = document.createElement('audio');
@@ -130,7 +136,7 @@ try {
           }
           this.setAttribute('aria-label', 'End voice');
           document.querySelector('#microphone').hidden = false;
-        ">Voice</button>
+        })()">Voice</button>
         <button id="microphone" aria-label="Turn off microphone" hidden>Mic</button>
       </body></html>`,
     }),
@@ -152,6 +158,10 @@ try {
       `http://127.0.0.1:${port}`,
       "--project-url",
       "https://chatgpt.com/g/g-p-test/project",
+      "--input-device",
+      "Meetron: Meeting to AI",
+      "--input-device-uid",
+      "io.github.bb8ad8.meetron.audio.meeting-to-ai.device",
       "--output-device",
       "Meetron: AI to Meeting",
       "--output-device-uid",
@@ -168,6 +178,9 @@ try {
   if (
     result.status !== "voice-active" ||
     result.replacedTab !== true ||
+    result.audioInput?.routed !== true ||
+    !result.audioInput?.device?.startsWith("Meetron: Meeting to AI") ||
+    result.audioInput?.inputRequests !== 1 ||
     result.audioOutput?.routed !== true ||
     !result.audioOutput?.device?.startsWith("Meetron: AI to Meeting") ||
     result.audioOutput?.audioContexts !== 1 ||
@@ -193,6 +206,10 @@ try {
         `http://127.0.0.1:${port}`,
         "--project-url",
         "https://chatgpt.com/g/g-p-failure/project",
+        "--input-device",
+        "Meetron: Meeting to AI",
+        "--input-device-uid",
+        "io.github.bb8ad8.meetron.audio.meeting-to-ai.device",
         "--output-device",
         "Meetron: AI to Meeting",
         "--output-device-uid",

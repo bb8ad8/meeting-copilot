@@ -8,12 +8,14 @@ const options = {
   cdp: "http://127.0.0.1:9223",
   projectUrl: "",
   replaceTab: false,
+  inputDevice: "",
+  inputDeviceUID: "",
   outputDevice: "",
   outputDeviceUID: "",
 };
 
 function usage() {
-  process.stdout.write(`Usage: node scripts/prepare-chatgpt-live.mjs [options]\n\nOptions:\n  --cdp URL                Chrome DevTools endpoint (default: ${options.cdp})\n  --project-url URL        ChatGPT Project landing URL\n  --output-device NAME     Override the ChatGPT Voice output device\n  --output-device-uid UID  Core Audio UID used by the safety check\n  --replace-tab            Close only existing ChatGPT tabs before starting Voice\n  -h, --help               Show this help\n`);
+  process.stdout.write(`Usage: node scripts/prepare-chatgpt-live.mjs [options]\n\nOptions:\n  --cdp URL                Chrome DevTools endpoint (default: ${options.cdp})\n  --project-url URL        ChatGPT Project landing URL\n  --input-device NAME      Override the ChatGPT Voice input device\n  --input-device-uid UID   Core Audio UID used by the safety check\n  --output-device NAME     Override the ChatGPT Voice output device\n  --output-device-uid UID  Core Audio UID used by the safety check\n  --replace-tab            Close only existing ChatGPT tabs before starting Voice\n  -h, --help               Show this help\n`);
 }
 
 for (let index = 0; index < args.length; index += 1) {
@@ -24,6 +26,12 @@ for (let index = 0; index < args.length; index += 1) {
       break;
     case "--project-url":
       options.projectUrl = args[++index] || "";
+      break;
+    case "--input-device":
+      options.inputDevice = args[++index] || "";
+      break;
+    case "--input-device-uid":
+      options.inputDeviceUID = args[++index] || "";
       break;
     case "--output-device":
       options.outputDevice = args[++index] || "";
@@ -51,10 +59,16 @@ if (!/^https:\/\/chatgpt\.com\/g\/g-p-[^/]+\/project(?:[/?#]|$)/.test(options.pr
   process.exit(2);
 }
 
-if (!options.outputDevice) {
+if (!options.inputDevice || !options.outputDevice) {
   const audio = await getAudioStatus();
-  options.outputDevice = audio.routing.chatgptOutput.name;
-  options.outputDeviceUID = audio.routing.chatgptOutput.uid;
+  if (!options.inputDevice) {
+    options.inputDevice = audio.routing.chatgptInput.name;
+    options.inputDeviceUID = audio.routing.chatgptInput.uid;
+  }
+  if (!options.outputDevice) {
+    options.outputDevice = audio.routing.chatgptOutput.name;
+    options.outputDeviceUID = audio.routing.chatgptOutput.uid;
+  }
 }
 
 const browser = await connectToChromeOverCDP(options.cdp);
@@ -82,15 +96,27 @@ if (!routingProbe) {
   await routingProbe.waitForLoadState("domcontentloaded", { timeout: 15_000 }).catch(() => {});
 }
 
-const outputDevice = await routingProbe.evaluate(async (targetName) => {
-  const outputs = (await navigator.mediaDevices.enumerateDevices())
-    .filter((device) => device.kind === "audiooutput");
-  const normalizedTarget = targetName.trim().toLowerCase();
-  const target = outputs.find((device) =>
-    device.label.trim().toLowerCase().startsWith(normalizedTarget),
-  );
-  return target ? { deviceId: target.deviceId, label: target.label } : null;
-}, options.outputDevice);
+const routingDevices = await routingProbe.evaluate(async ({ inputName, outputName }) => {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const findDevice = (kind, targetName) => {
+    const normalizedTarget = targetName.trim().toLowerCase();
+    const target = devices.find((device) =>
+      device.kind === kind && device.label.trim().toLowerCase().startsWith(normalizedTarget),
+    );
+    return target ? { deviceId: target.deviceId, label: target.label } : null;
+  };
+  return {
+    input: findDevice("audioinput", inputName),
+    output: findDevice("audiooutput", outputName),
+  };
+}, { inputName: options.inputDevice, outputName: options.outputDevice });
+
+const inputDevice = routingDevices.input;
+const outputDevice = routingDevices.output;
+
+if (!inputDevice) {
+  throw new Error(`ChatGPT Voice input device was not found: ${options.inputDevice}`);
+}
 
 if (!outputDevice) {
   throw new Error(`ChatGPT Voice output device was not found: ${options.outputDevice}`);
@@ -105,6 +131,7 @@ async function inspectChromeAudioOutputs(
   browserContext,
   expectedDeviceLabel,
   expectedDeviceUID,
+  expectedBrowserDeviceId,
 ) {
   const session = await browserInstance.newBrowserCDPSession();
   const pagePromise = browserContext.waitForEvent("page", {
@@ -149,6 +176,7 @@ async function inspectChromeAudioOutputs(
     }
 
     const expectedDevices = [
+      normalizedDeviceName(expectedBrowserDeviceId),
       normalizedDeviceName(expectedDeviceUID),
       normalizedDeviceName(expectedDeviceLabel).replace(/virtual$/, ""),
     ].filter(Boolean);
@@ -167,6 +195,7 @@ async function inspectChromeAudioOutputs(
       checked: true,
       expectedDevice: expectedDeviceLabel,
       expectedDeviceUID,
+      expectedBrowserDeviceId,
       activeChatgptOutputs: activeChatgptOutputs.map((controller) => ({
         deviceId: controller.device_id || "",
         status: controller.status || "",
@@ -184,10 +213,14 @@ async function inspectChromeAudioOutputs(
   }
 }
 
-await context.addInitScript(({ sinkId, label }) => {
+await context.addInitScript(({ inputDeviceId, inputLabel, sinkId, outputLabel }) => {
   const state = {
+    inputDeviceId,
+    inputLabel,
     sinkId,
-    label,
+    label: outputLabel,
+    inputRequests: 0,
+    inputTracks: [],
     contexts: new Set(),
     mediaElements: new Set(),
     routeAttempts: 0,
@@ -197,6 +230,37 @@ await context.addInitScript(({ sinkId, label }) => {
     configurable: true,
     value: state,
   });
+
+  if (
+    location.origin === "https://chatgpt.com" &&
+    globalThis.MediaDevices?.prototype?.getUserMedia
+  ) {
+    const nativeGetUserMedia = MediaDevices.prototype.getUserMedia;
+    MediaDevices.prototype.getUserMedia = async function routedGetUserMedia(constraints = {}) {
+      if (!constraints || typeof constraints !== "object" || !constraints.audio) {
+        return nativeGetUserMedia.call(this, constraints);
+      }
+      const requestedAudio =
+        constraints.audio === true || typeof constraints.audio !== "object"
+          ? {}
+          : constraints.audio;
+      state.inputRequests += 1;
+      const stream = await nativeGetUserMedia.call(this, {
+        ...constraints,
+        audio: {
+          ...requestedAudio,
+          deviceId: { exact: inputDeviceId },
+        },
+      });
+      for (const track of stream.getAudioTracks()) {
+        state.inputTracks.push({
+          deviceId: track.getSettings?.().deviceId || "",
+          label: track.label || "",
+        });
+      }
+      return stream;
+    };
+  }
 
   const routeMediaElement = (element) => {
     state.mediaElements.add(element);
@@ -282,7 +346,12 @@ await context.addInitScript(({ sinkId, label }) => {
       for (const node of record.addedNodes) routeAddedMedia(node);
     }
   }).observe(document, { childList: true, subtree: true });
-}, { sinkId: outputDevice.deviceId, label: outputDevice.label });
+}, {
+  inputDeviceId: inputDevice.deviceId,
+  inputLabel: inputDevice.label,
+  sinkId: outputDevice.deviceId,
+  outputLabel: outputDevice.label,
+});
 
 if (temporaryProbe) {
   await routingProbe.close();
@@ -350,6 +419,7 @@ await startVoice.waitFor({ state: "visible", timeout: 10_000 });
 let voiceStartAttempted = false;
 let endVoice;
 let microphoneOn;
+let audioInput;
 let audioOutput;
 let internalAudioOutput;
 try {
@@ -366,6 +436,29 @@ try {
   });
 
   await page.waitForTimeout(750);
+  await page.waitForFunction(() => {
+    const state = globalThis.__meetingCopilotAudioRouting;
+    return state?.inputRequests > 0 && state.inputTracks.length > 0;
+  }, undefined, { timeout: 5_000 });
+  audioInput = await page.evaluate(() => {
+    const state = globalThis.__meetingCopilotAudioRouting;
+    if (!state) return { routed: false, error: "Audio routing was not initialized." };
+    const matchingTracks = state.inputTracks.filter(
+      (track) => track.deviceId === state.inputDeviceId,
+    );
+    return {
+      routed: state.inputRequests > 0 && matchingTracks.length > 0,
+      device: state.inputLabel,
+      inputRequests: state.inputRequests,
+      tracks: state.inputTracks,
+    };
+  });
+  if (!audioInput.routed) {
+    throw new Error(
+      `ChatGPT Voice input could not be routed to ${inputDevice.label}.`,
+    );
+  }
+
   audioOutput = await page.evaluate(async () => {
     const state = globalThis.__meetingCopilotAudioRouting;
     if (!state) return { routed: false, error: "Audio routing was not initialized." };
@@ -404,6 +497,7 @@ try {
     context,
     outputDevice.label,
     options.outputDeviceUID,
+    outputDevice.deviceId,
   );
   await page.evaluate((validation) => {
     const state = globalThis.__meetingCopilotAudioRouting;
@@ -438,6 +532,7 @@ const result = {
   newChatCreated: true,
   replacedTab: options.replaceTab,
   microphoneOn: await microphoneOn.isVisible(),
+  audioInput,
   audioOutput,
   internalAudioOutput,
   title: await page.title(),

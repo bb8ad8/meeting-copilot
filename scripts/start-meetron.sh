@@ -21,7 +21,7 @@ cleanup_on_failure() {
       "$repo_root/scripts/close-dedicated-chrome.sh" >/dev/null 2>&1 || true
     fi
     if [ "$audio_configured" -eq 1 ]; then
-      printf '[INFO] Restoring the previous macOS audio defaults after launch failure.\n' >&2
+      printf '[INFO] Finishing Meetron audio cleanup after launch failure.\n' >&2
       "$repo_root/scripts/restore-audio.sh" >/dev/null 2>&1 || true
     fi
   fi

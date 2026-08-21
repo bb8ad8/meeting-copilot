@@ -1,7 +1,7 @@
 import CoreAudio
 import Foundation
 
-public let meetronAudioControlVersion = "0.1.0"
+public let meetronAudioControlVersion = "0.1.1"
 
 public struct AudioDevice: Codable, Equatable, Sendable {
     public let id: UInt32

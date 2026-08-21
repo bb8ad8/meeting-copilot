@@ -132,7 +132,7 @@
         <div class="actions">
           <button class="command primary" data-mic type="button">${icon("micOff")}<span>ミュート解除</span></button>
           <button class="command" data-restart type="button">${icon("rotate")}<span>Voice再起動</span></button>
-          <button class="command" data-stop type="button">${icon("square")}<span>終了・復元</span></button>
+          <button class="command" data-stop type="button">${icon("square")}<span>セッション終了</span></button>
           <button class="command" data-diagnostics type="button">${icon("terminal")}<span>診断</span></button>
         </div>
         <div class="footer">
@@ -397,7 +397,7 @@
     runCommand("voice.restart", "Voiceを再起動しています", "Voiceを再起動しました"),
   );
   onTrustedClick(elements.stop, () =>
-    runCommand("session.stop", "セッションを終了しています", "音声設定を復元しました"),
+    runCommand("session.stop", "セッションを終了しています", "セッションを終了しました"),
   );
   onTrustedClick(elements.diagnostics, async () => {
     busy = true;

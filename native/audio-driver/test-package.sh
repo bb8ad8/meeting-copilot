@@ -5,7 +5,11 @@ set -euo pipefail
 driver_root="$(cd "$(dirname "$0")" && pwd)"
 repo_root="$(cd "$driver_root/../.." && pwd)"
 version="${MEETRON_AUDIO_VERSION:-${MEETING_COPILOT_AUDIO_VERSION:-0.1.0}}"
-package_path="${1:-$repo_root/dist/MeetronAudio-$version.pkg}"
+if [ "$#" -gt 0 ]; then
+  package_path="$1"
+else
+  package_path="$repo_root/dist/development/MeetronAudio-$version.pkg"
+fi
 checksum_path="$package_path.sha256"
 working_dir="$(mktemp -d "${TMPDIR:-/tmp}/meetron-package-test.XXXXXX")"
 trap 'rm -rf "$working_dir"' EXIT

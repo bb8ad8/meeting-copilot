@@ -29,6 +29,7 @@
   "scripts": {
     "build:audio": "./scripts/build-audio-control.sh && ./native/audio-driver/build-driver.sh",
     "package:audio": "./native/audio-driver/package-driver.sh",
+    "package:audio:release": "MEETRON_RELEASE_BUILD=1 ./native/audio-driver/package-driver.sh",
     "test": "./tests/scripts-test.sh",
     "test:native": "./native/audio-driver/test-driver.sh",
     "test:package": "./native/audio-driver/test-package.sh"

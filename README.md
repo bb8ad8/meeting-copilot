@@ -322,12 +322,14 @@ npm test
 npm run test:native
 ```
 
-配布PKGの生成とUniversal Binary、macOS 13 deployment target、チェックサムの検証はリリース作業で実行します。`package:audio`はSwift製の音声制御CLIとC製の仮想音声ドライバを一度だけビルドします。
+配布PKGの生成とUniversal Binary、macOS 13 deployment target、チェックサムの検証はリリース作業で実行します。通常の`package:audio`は開発用PKGを`dist/development/`へ生成し、公証済みの公開成果物とは分離します。
 
 ```bash
 npm run package:audio
 npm run test:package
 ```
+
+公開用PKGはDeveloper IDとApple公証の設定後、`npm run package:audio:release`で`dist/release/`へ生成します。この処理は公証設定がなければ停止し、既存の公証済みPKGを上書きしません。
 
 PKGをインストールして利用するだけのユーザーは、これらの開発者テストを実行する必要はありません。`./scripts/setup-meetron.sh --check-only`と`./scripts/check-env.sh`を使ってください。
 

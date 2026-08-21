@@ -7,13 +7,13 @@ driver_root="$(cd "$(dirname "$0")" && pwd)"
 repo_root="$(cd "$driver_root/../.." && pwd)"
 version="${MEETRON_AUDIO_VERSION:-${MEETING_COPILOT_AUDIO_VERSION:-0.1.0}}"
 deployment_target="${MEETRON_AUDIO_DEPLOYMENT_TARGET:-${MEETING_COPILOT_AUDIO_DEPLOYMENT_TARGET:-13.0}}"
-output_dir="${MEETRON_AUDIO_DIST_DIR:-${MEETING_COPILOT_AUDIO_DIST_DIR:-$repo_root/dist}}"
 application_identity="${MEETRON_AUDIO_SIGNING_IDENTITY:-${MEETING_COPILOT_AUDIO_SIGNING_IDENTITY:--}}"
 installer_identity="${MEETRON_INSTALLER_SIGNING_IDENTITY:-${MEETING_COPILOT_INSTALLER_SIGNING_IDENTITY:-}}"
 notary_profile="${MEETRON_NOTARY_PROFILE:-${MEETING_COPILOT_NOTARY_PROFILE:-}}"
 notary_key="${MEETRON_NOTARY_KEY:-${MEETING_COPILOT_NOTARY_KEY:-}}"
 notary_key_id="${MEETRON_NOTARY_KEY_ID:-${MEETING_COPILOT_NOTARY_KEY_ID:-}}"
 notary_issuer="${MEETRON_NOTARY_ISSUER:-${MEETING_COPILOT_NOTARY_ISSUER:-}}"
+release_build="${MEETRON_RELEASE_BUILD:-0}"
 working_dir="$(mktemp -d "${TMPDIR:-/tmp}/meetron-audio-package.XXXXXX")"
 trap 'rm -rf "$working_dir"' EXIT
 
@@ -35,6 +35,43 @@ elif [ -n "$notary_key" ] || [ -n "$notary_key_id" ] || [ -n "$notary_issuer" ];
   fi
   notary_args=(--key "$notary_key" --key-id "$notary_key_id" --issuer "$notary_issuer")
 fi
+
+if [ "$release_build" != "0" ] && [ "$release_build" != "1" ]; then
+  printf 'MEETRON_RELEASE_BUILD must be 0 or 1.\n' >&2
+  exit 1
+fi
+if [ "$release_build" = "1" ] && [ "${#notary_args[@]}" -eq 0 ]; then
+  printf 'Release packaging requires Apple notarization credentials.\n' >&2
+  exit 1
+fi
+
+configured_output_dir="${MEETRON_AUDIO_DIST_DIR:-${MEETING_COPILOT_AUDIO_DIST_DIR:-}}"
+if [ -n "$configured_output_dir" ]; then
+  output_dir="$configured_output_dir"
+elif [ "$release_build" = "1" ] || [ "${#notary_args[@]}" -gt 0 ]; then
+  output_dir="$repo_root/dist/release"
+else
+  output_dir="$repo_root/dist/development"
+fi
+
+package_name="MeetronAudio-$version.pkg"
+package_path="$output_dir/$package_name"
+
+protect_existing_notarized_package() {
+  if [ -f "$package_path" ]; then
+    signature_output="$(pkgutil --check-signature "$package_path" 2>&1 || true)"
+    if xcrun stapler validate "$package_path" >/dev/null 2>&1 ||
+      printf '%s\n' "$signature_output" | grep -F 'Notarization: trusted by the Apple notary service' >/dev/null; then
+      printf 'Refusing to overwrite an existing notarized package: %s\n' "$package_path" >&2
+      printf 'Use a new version or move the existing release artifact to a separately preserved location.\n' >&2
+      exit 1
+    fi
+  fi
+}
+
+# Fail before an expensive build, then check again immediately before copying
+# to close the window where another process could place a release artifact.
+protect_existing_notarized_package
 
 MEETING_COPILOT_AUDIO_BUILD_DIR="$working_dir/drivers" \
 MEETING_COPILOT_AUDIO_SIGNING_IDENTITY="$application_identity" \
@@ -136,7 +173,7 @@ cat > "$working_dir/Distribution.xml" <<EOF
 </installer-gui-script>
 EOF
 
-package_path="$output_dir/MeetronAudio-$version.pkg"
+built_package="$working_dir/$package_name"
 product_args=(
   --distribution "$working_dir/Distribution.xml"
   --resources "$resources"
@@ -145,23 +182,27 @@ product_args=(
 if [ -n "$installer_identity" ]; then
   product_args+=(--sign "$installer_identity" --timestamp)
 fi
-productbuild "${product_args[@]}" "$package_path"
+productbuild "${product_args[@]}" "$built_package"
 
 if [ "${#notary_args[@]}" -gt 0 ]; then
   if [ -z "$installer_identity" ] || [ "$application_identity" = "-" ]; then
     printf 'Notarization requires Developer ID Application and Installer identities.\n' >&2
     exit 1
   fi
-  xcrun notarytool submit "$package_path" "${notary_args[@]}" --wait
-  xcrun stapler staple "$package_path"
-  xcrun stapler validate "$package_path"
-  spctl --assess --type install --verbose=2 "$package_path"
+  xcrun notarytool submit "$built_package" "${notary_args[@]}" --wait
+  xcrun stapler staple "$built_package"
+  xcrun stapler validate "$built_package"
+  spctl --assess --type install --verbose=2 "$built_package"
 fi
 
-pkgutil --check-signature "$package_path" || [ -z "$installer_identity" ]
+pkgutil --check-signature "$built_package" || [ -z "$installer_identity" ]
+
+protect_existing_notarized_package
+
+/bin/cp "$built_package" "$package_path"
 (
   cd "$output_dir"
-  shasum -a 256 "$(basename "$package_path")" > "$(basename "$package_path").sha256"
+  shasum -a 256 "$package_name" > "$package_name.sha256"
 )
 printf 'Created %s\n' "$package_path"
 printf 'Created %s.sha256\n' "$package_path"

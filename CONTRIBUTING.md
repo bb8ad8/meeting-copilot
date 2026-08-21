@@ -18,7 +18,7 @@ npm run test:native
 npm run build:audio
 ```
 
-Release package changes additionally require `npm run package:audio` followed by `npm run test:package`. The packaged `meetron-audioctl` is written in Swift, but no Swift toolchain is required to install or run the distributed PKG.
+Release package changes additionally require a development build with `npm run package:audio` followed by `npm run test:package`. Maintainers create the public, signed and notarized artifact with `npm run package:audio:release`; it is isolated under `dist/release/` and must pass the notarized package test before upload. The packaged `meetron-audioctl` is written in Swift, but no Swift toolchain is required to install or run the distributed PKG.
 
 The browser UI test uses the locally installed Google Chrome. Set `MEETING_COPILOT_SKIP_BROWSER_TEST=1` only when Chrome is unavailable; run the full test before proposing user-interface or automation changes.
 

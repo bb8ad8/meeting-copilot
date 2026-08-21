@@ -87,6 +87,7 @@ find_audio_pkg() {
     "$repo_root"/MeetronAudio-*.pkg \
     "$repo_root"/installer/MeetronAudio-*.pkg \
     "$repo_root"/../installer/MeetronAudio-*.pkg \
+    "$repo_root"/dist/release/MeetronAudio-*.pkg \
     "$repo_root"/dist/MeetronAudio-*.pkg \
     "$HOME"/Downloads/MeetronAudio-*.pkg \
     "$HOME"/Desktop/MeetronAudio-*.pkg; do

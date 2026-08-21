@@ -35,6 +35,9 @@ Build a Universal Binary PKG (unsigned by default):
 ./native/audio-driver/package-driver.sh
 ```
 
+Development packages are written to `dist/development/`. They are deliberately
+kept separate from notarized release artifacts.
+
 For a release, set the two Developer ID identities and either a notary keychain
 profile or an App Store Connect API key stored outside this repository:
 
@@ -50,8 +53,8 @@ export MEETRON_NOTARY_KEY='/secure/location/AuthKey_KEYID.p8'
 export MEETRON_NOTARY_KEY_ID='KEYID'
 export MEETRON_NOTARY_ISSUER='ISSUER-UUID'
 
-npm run package:audio
-MEETRON_REQUIRE_NOTARIZED=1 npm run test:package
+npm run package:audio:release
+MEETRON_REQUIRE_NOTARIZED=1 npm run test:package -- dist/release/MeetronAudio-0.1.0.pkg
 ```
 
 Use only one notarization option. The package script signs the drivers and CLI,
@@ -59,3 +62,7 @@ signs the installer, submits it to Apple, staples the ticket, verifies
 Gatekeeper acceptance, and finally writes the checksum. Private keys and
 certificates are ignored by Git and must never be committed. The legacy
 `MEETING_COPILOT_*` names remain accepted during migration.
+
+Release artifacts are written to `dist/release/` only after every validation
+passes. The script always refuses to overwrite an existing notarized package;
+bump the package version or preserve and move the old artifact first.

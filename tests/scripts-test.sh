@@ -46,6 +46,19 @@ else
   fail 'Meetron setup help'
 fi
 
+if release_guard_output="$(MEETRON_RELEASE_BUILD=1 \
+  MEETRON_NOTARY_PROFILE= \
+  MEETRON_NOTARY_KEY= \
+  MEETRON_NOTARY_KEY_ID= \
+  MEETRON_NOTARY_ISSUER= \
+  "$repo_root/native/audio-driver/package-driver.sh" 2>&1)"; then
+  fail 'release packaging requires notarization credentials'
+elif printf '%s\n' "$release_guard_output" | grep -F 'requires Apple notarization credentials' >/dev/null; then
+  pass 'release packaging requires notarization credentials'
+else
+  fail 'release packaging requires notarization credentials'
+fi
+
 fake_setup_bin="$temp_dir/setup-bin"
 fake_setup_pkg="$temp_dir/MeetronAudio-9.9.9.pkg"
 mkdir -p "$fake_setup_bin"

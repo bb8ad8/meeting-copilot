@@ -26,7 +26,7 @@ usage() {
   cat <<'EOF'
 Usage: ./scripts/open-chatgpt-live.sh [options]
 
-Opens a new voice chat in the shared Meeting Copilot Chrome profile.
+Opens a new voice chat in the shared Meetron Chrome profile.
 
 Environment variables:
   MEETING_COPILOT_CHATGPT_PROJECT_URL   ChatGPT Project landing URL.
@@ -162,7 +162,7 @@ launch_chrome=1
 profile_pids="$(find_profile_pids)"
 if [ -n "$profile_pids" ]; then
   if [ "$restart_profile" -eq 1 ]; then
-    printf '[INFO] Restarting shared Meeting Copilot Chrome profile.\n'
+    printf '[INFO] Restarting shared Meetron Chrome profile.\n'
     for profile_pid in $profile_pids; do
       kill "$profile_pid" 2>/dev/null || true
     done
@@ -174,7 +174,7 @@ if [ -n "$profile_pids" ]; then
     done
   elif dedicated_endpoint_ready; then
     launch_chrome=0
-    printf '[INFO] Reusing shared Meeting Copilot Chrome profile.\n'
+    printf '[INFO] Reusing shared Meetron Chrome profile.\n'
   else
     printf 'The shared Chrome profile is running without its automation endpoint.\n' >&2
     printf 'Close it, then run the command again.\n' >&2
@@ -225,4 +225,4 @@ if [ "$prepare_status" -ne 0 ]; then
   exit "$prepare_status"
 fi
 
-printf '\nChatGPT Voice is active in a new Meeting Copilot chat.\n'
+printf '\nChatGPT Voice is active in a new Meetron chat.\n'

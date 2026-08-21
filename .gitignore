@@ -2,3 +2,10 @@
 .meeting-copilot.env
 node_modules/
 .meeting-copilot-runtime/
+/docs/
+/native/**/.build
+/dist/
+*.p8
+*.p12
+*.cer
+*.certSigningRequest

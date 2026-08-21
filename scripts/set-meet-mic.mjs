@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { chromium } from "playwright-core";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { connectToChromeOverCDP } from "./playwright-cdp.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const runtimeDir = resolve(repoRoot, ".meeting-copilot-runtime");
@@ -63,7 +63,7 @@ if (!Number.isFinite(options.wait) || options.wait < 0) {
   process.exit(2);
 }
 
-const browser = await chromium.connectOverCDP(options.cdp);
+const browser = await connectToChromeOverCDP(options.cdp);
 const context = browser.contexts()[0];
 if (!context) {
   throw new Error("Chrome did not expose a browser context.");

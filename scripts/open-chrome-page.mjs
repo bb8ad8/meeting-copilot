@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { chromium } from "playwright-core";
+import { connectToChromeOverCDP } from "./playwright-cdp.mjs";
 
 const args = process.argv.slice(2);
 let cdp = "http://127.0.0.1:9223";
@@ -42,7 +42,7 @@ if (!new Set(["https:", "chrome:"]).has(parsedUrl.protocol)) {
   process.exit(2);
 }
 
-const browser = await chromium.connectOverCDP(cdp);
+const browser = await connectToChromeOverCDP(cdp);
 const session = await browser.newBrowserCDPSession();
 const { targetId } = await session.send("Target.createTarget", { url: targetUrl });
 await session.send("Target.activateTarget", { targetId });

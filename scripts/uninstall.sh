@@ -3,14 +3,16 @@
 set -eu
 
 remove_data=0
+remove_audio_driver=0
 confirmed=0
 
 usage() {
   cat <<'EOF'
-Usage: ./scripts/uninstall.sh [--remove-data --yes]
+Usage: ./scripts/uninstall.sh [--remove-data] [--remove-audio-driver] [--yes]
 
 Removes the Native Messaging Host registration. With --remove-data --yes, also
 removes local settings, runtime files, and the shared dedicated Chrome profile.
+With --remove-audio-driver, also removes the system-level virtual audio plug-ins.
 The unpacked extension must still be removed manually from chrome://extensions.
 EOF
 }
@@ -19,6 +21,9 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --remove-data)
       remove_data=1
+      ;;
+    --remove-audio-driver)
+      remove_audio_driver=1
       ;;
     --yes)
       confirmed=1
@@ -36,8 +41,8 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-if [ "$remove_data" -eq 1 ] && [ "$confirmed" -ne 1 ]; then
-  printf '%s\n' '--remove-data requires --yes because dedicated login profiles will be deleted.' >&2
+if { [ "$remove_data" -eq 1 ] || [ "$remove_audio_driver" -eq 1 ]; } && [ "$confirmed" -ne 1 ]; then
+  printf '%s\n' '--remove-data and --remove-audio-driver require --yes.' >&2
   exit 2
 fi
 
@@ -76,7 +81,7 @@ validate_removal_paths() {
   case "$actual_profile" in
     "$profile_root"/*) ;;
     *)
-      printf 'Refusing to remove a Chrome profile outside Meeting Copilot data: %s\n' "$shared_profile" >&2
+      printf 'Refusing to remove a Chrome profile outside Meetron data: %s\n' "$shared_profile" >&2
       exit 1
       ;;
   esac
@@ -102,10 +107,14 @@ if [ -f "$audio_state_path" ]; then
 fi
 "$repo_root/scripts/install-control-ui.sh" --uninstall --quiet
 
+if [ "$remove_audio_driver" -eq 1 ]; then
+  "$repo_root/native/audio-driver/uninstall-driver.sh"
+fi
+
 if [ "$remove_data" -eq 1 ]; then
   rm -rf -- "$runtime_dir" "$shared_profile" "$legacy_chatgpt_profile"
   rm -f -- "$repo_root/.meeting-copilot.env"
-  printf 'Removed Meeting Copilot local data and dedicated Chrome profiles.\n'
+  printf 'Removed Meetron local data and dedicated Chrome profiles.\n'
 fi
 
-printf 'Remove Meeting Copilot Controls from regular and shared dedicated Chrome in chrome://extensions.\n'
+printf 'Remove Meetron Controls from regular and shared dedicated Chrome in chrome://extensions.\n'

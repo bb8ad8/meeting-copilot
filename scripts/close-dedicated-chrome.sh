@@ -14,7 +14,7 @@ usage() {
   cat <<'EOF'
 Usage: ./scripts/close-dedicated-chrome.sh [--dry-run]
 
-Closes the shared Meeting Copilot Chrome profile. This also ends ChatGPT Voice
+Closes the shared Meetron Chrome profile. This also ends ChatGPT Voice
 and disconnects its dedicated Meet participant.
 EOF
 }
@@ -43,12 +43,12 @@ find_profile_pids() {
 
 profile_pids="$(find_profile_pids)"
 if [ -z "$profile_pids" ]; then
-  printf 'Meeting Copilot Chrome is not running.\n'
+  printf 'Meetron Chrome is not running.\n'
   exit 0
 fi
 
 if [ "$dry_run" -eq 1 ]; then
-  printf '[DRY RUN] close Meeting Copilot Chrome profile: %s\n' "$profile_dir"
+  printf '[DRY RUN] close Meetron Chrome profile: %s\n' "$profile_dir"
   exit 0
 fi
 
@@ -69,4 +69,4 @@ if [ -n "$remaining_pids" ]; then
   done
 fi
 
-printf 'Meeting Copilot Chrome closed.\n'
+printf 'Meetron Chrome closed.\n'

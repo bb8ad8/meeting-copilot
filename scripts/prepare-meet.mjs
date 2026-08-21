@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { chromium } from "playwright-core";
+import { getAudioStatus } from "./audio-backend.mjs";
+import { connectToChromeOverCDP } from "./playwright-cdp.mjs";
 
 const CONTROLLER_EXTENSION_ID = "jlikakgdldiihhflkobhnpfegjlcakdd";
 
@@ -9,12 +10,14 @@ const options = {
   cdp: "http://127.0.0.1:9223",
   join: false,
   joinDelay: 2,
+  microphoneDevice: "",
   name: "GPT-Live",
+  speakerDevice: "",
   url: "",
 };
 
 function usage() {
-  process.stdout.write(`Usage: node scripts/prepare-meet.mjs [options]\n\nOptions:\n  --cdp URL        Chrome DevTools endpoint (default: ${options.cdp})\n  --name NAME      Meet participant name (default: ${options.name})\n  --url URL        Expected Google Meet URL\n  --join           Request admission after preparing the pre-join screen\n  --join-delay SEC Wait before requesting admission (default: ${options.joinDelay})\n  -h, --help       Show this help\n`);
+  process.stdout.write(`Usage: node scripts/prepare-meet.mjs [options]\n\nOptions:\n  --cdp URL                Chrome DevTools endpoint (default: ${options.cdp})\n  --name NAME              Meet participant name (default: ${options.name})\n  --url URL                Expected Google Meet URL\n  --microphone-device NAME Override the selected virtual microphone\n  --speaker-device NAME    Override the selected virtual speaker\n  --join                   Request admission after preparing the pre-join screen\n  --join-delay SEC         Wait before requesting admission (default: ${options.joinDelay})\n  -h, --help               Show this help\n`);
 }
 
 for (let index = 0; index < args.length; index += 1) {
@@ -25,6 +28,12 @@ for (let index = 0; index < args.length; index += 1) {
       break;
     case "--name":
       options.name = args[++index] || "";
+      break;
+    case "--microphone-device":
+      options.microphoneDevice = args[++index] || "";
+      break;
+    case "--speaker-device":
+      options.speakerDevice = args[++index] || "";
       break;
     case "--url":
       options.url = args[++index] || "";
@@ -57,7 +66,17 @@ if (!Number.isFinite(options.joinDelay) || options.joinDelay < 0) {
   process.exit(2);
 }
 
-const browser = await chromium.connectOverCDP(options.cdp);
+if (!options.microphoneDevice || !options.speakerDevice) {
+  const audio = await getAudioStatus();
+  options.microphoneDevice ||= audio.routing.meetingMicrophone.name;
+  options.speakerDevice ||= audio.routing.meetingSpeaker.name;
+}
+
+function exactDevicePattern(name) {
+  return new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+}
+
+const browser = await connectToChromeOverCDP(options.cdp);
 const contexts = browser.contexts();
 if (contexts.length === 0) {
   throw new Error("Chrome did not expose a browser context.");
@@ -157,7 +176,11 @@ async function selectAudioDevice({ buttonName, menuName, targetName }) {
     await button.click();
     const menu = page.getByRole("menu", { name: menuName });
     await menu.getByRole("menuitemradio", { name: targetName }).click({ timeout: 5_000 });
-    currentLabel = (await button.getAttribute("aria-label")) || "";
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      currentLabel = (await button.getAttribute("aria-label")) || "";
+      if (targetName.test(currentLabel)) break;
+      await page.waitForTimeout(100);
+    }
   }
   if (!targetName.test(currentLabel)) {
     throw new Error(`Meet did not select the required audio device: ${targetName}`);
@@ -168,13 +191,13 @@ async function selectAudioDevice({ buttonName, menuName, targetName }) {
 const microphoneDevice = await selectAudioDevice({
   buttonName: /^(マイク|Microphone):/i,
   menuName: /マイク|Microphone/i,
-  targetName: /BlackHole 16ch/i,
+  targetName: exactDevicePattern(options.microphoneDevice),
 });
 
 const speakerDevice = await selectAudioDevice({
   buttonName: /^(スピーカー|Speaker):/i,
   menuName: /スピーカー|Speaker/i,
-  targetName: /BlackHole 2ch/i,
+  targetName: exactDevicePattern(options.speakerDevice),
 });
 
 const nameFilled = await fillParticipantName();

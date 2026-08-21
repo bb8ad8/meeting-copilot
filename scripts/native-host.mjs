@@ -15,13 +15,15 @@ import {
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { chromium } from "playwright-core";
+import { getAudioStatus } from "./audio-backend.mjs";
+import { connectToChromeOverCDP } from "./playwright-cdp.mjs";
 
 const EXTENSION_ID = "jlikakgdldiihhflkobhnpfegjlcakdd";
 const EXPECTED_ORIGIN = `chrome-extension://${EXTENSION_ID}/`;
 const MAX_MESSAGE_BYTES = 1024 * 1024;
 const execFileAsync = promisify(execFile);
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const appVersion = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8")).version;
 const scriptsDir = resolve(repoRoot, "scripts");
 const runtimeDir = resolve(
   process.env.MEETING_COPILOT_RUNTIME_DIR || resolve(repoRoot, ".meeting-copilot-runtime"),
@@ -38,7 +40,7 @@ const PROFILE_LAYOUT_VERSION = 2;
 let dedicatedBrowser = null;
 
 if (process.argv.includes("--help")) {
-  process.stdout.write(`Meeting Copilot Native Messaging Host\n\nExpected extension: ${EXTENSION_ID}\n`);
+  process.stdout.write(`Meetron Native Messaging Host\n\nExpected extension: ${EXTENSION_ID}\n`);
   process.exit(0);
 }
 
@@ -128,60 +130,6 @@ function writeJsonAtomic(path, value) {
   renameSync(temporaryPath, path);
 }
 
-function findSwitchAudioSource() {
-  return [
-    "/opt/homebrew/bin/SwitchAudioSource",
-    "/usr/local/bin/SwitchAudioSource",
-  ].find(existsSync);
-}
-
-async function getAudioStatus() {
-  const executable = findSwitchAudioSource();
-  if (!executable) {
-    return {
-      ready: false,
-      switchAudioSourceInstalled: false,
-      input: "",
-      output: "",
-      devices: [],
-    };
-  }
-
-  try {
-    const [input, output, devices] = await Promise.all([
-      run(executable, ["-c", "-t", "input"]),
-      run(executable, ["-c", "-t", "output"]),
-      run(executable, ["-a"]),
-    ]);
-    const deviceNames = devices.stdout
-      .split("\n")
-      .map((name) => name.trim())
-      .filter(Boolean);
-    const currentInput = input.stdout.trim();
-    const currentOutput = output.stdout.trim();
-    const requiredDevices = ["BlackHole 2ch", "BlackHole 16ch"];
-
-    return {
-      ready:
-        /BlackHole 2ch/i.test(currentInput) &&
-        requiredDevices.every((name) => deviceNames.includes(name)),
-      switchAudioSourceInstalled: true,
-      input: currentInput,
-      output: currentOutput,
-      devices: deviceNames,
-    };
-  } catch (error) {
-    return {
-      ready: false,
-      switchAudioSourceInstalled: true,
-      input: "",
-      output: "",
-      devices: [],
-      error: error.message,
-    };
-  }
-}
-
 async function connectDedicatedChrome() {
   const port = configuredPort("MEETING_COPILOT_CDP_PORT", "9223");
   await run(
@@ -199,7 +147,7 @@ async function connectDedicatedChrome() {
     return dedicatedBrowser;
   }
 
-  dedicatedBrowser = await chromium.connectOverCDP(
+  dedicatedBrowser = await connectToChromeOverCDP(
     `http://127.0.0.1:${port}`,
     { timeout: 3_000 },
   );
@@ -487,8 +435,7 @@ function dedicatedExtensionInstalled() {
 async function getSetupStatus(audioStatus = null) {
   const audio = audioStatus || await getAudioStatus();
   const confirmations = readSetupState();
-  const requiredDevices = ["BlackHole 2ch", "BlackHole 16ch"];
-  const audioDevicesReady = requiredDevices.every((name) => audio.devices.includes(name));
+  const audioDevicesReady = audio.devicesReady === true;
   const projectUrl = getProjectUrl();
   const projectIsConfigured = Boolean(projectUrl) && projectConfigured();
   const extensionInstalled = dedicatedExtensionInstalled();
@@ -498,9 +445,6 @@ async function getSetupStatus(audioStatus = null) {
     audio: {
       ...audio,
       devicesReady: audioDevicesReady,
-      requiredDevices: Object.fromEntries(
-        requiredDevices.map((name) => [name, audio.devices.includes(name)]),
-      ),
     },
     project: {
       configured: projectIsConfigured,
@@ -743,7 +687,7 @@ async function getStatus() {
   ]);
   const setup = await getSetupStatus(audio);
   return {
-    host: { connected: true, version: "0.7.2" },
+    host: { connected: true, version: appVersion },
     audio,
     chatgpt,
     dedicatedMeet,

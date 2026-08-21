@@ -89,7 +89,7 @@ done
 
 cat <<EOF
 
-In the shared Meeting Copilot Chrome window:
+In the shared Meetron Chrome window:
   1. Enable Developer mode.
   2. Click Load unpacked.
   3. Select: $extension_dir

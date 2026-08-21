@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { chromium } from "playwright-core";
+import { connectToChromeOverCDP } from "../scripts/playwright-cdp.mjs";
 
 const execFileAsync = promisify(execFile);
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -49,7 +49,7 @@ try {
   }
   if (!endpointReady) throw new Error("Chrome CDP endpoint did not start.");
 
-  browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
+  browser = await connectToChromeOverCDP(`http://127.0.0.1:${port}`);
   const context = browser.contexts()[0];
   await context.route("https://meet.google.com/**", (route) => {
     const url = new URL(route.request().url());
@@ -58,8 +58,8 @@ try {
     route.fulfill({
       contentType: "text/html",
       body: `<!doctype html><html><body>
-        <button aria-label="Microphone: BlackHole 16ch">Microphone</button>
-        <button aria-label="Speaker: BlackHole 2ch">Speaker</button>
+        <button aria-label="Microphone: Meetron: AI to Meeting">Microphone</button>
+        <button aria-label="Speaker: Meetron: Meeting to AI">Speaker</button>
         <button aria-label="Turn on microphone">Muted</button>
         ${
           cameraOn
@@ -80,6 +80,10 @@ try {
       `http://127.0.0.1:${port}`,
       "--url",
       url,
+      "--microphone-device",
+      "Meetron: AI to Meeting",
+      "--speaker-device",
+      "Meetron: Meeting to AI",
     ];
     if (join) argumentsList.push("--join", "--join-delay", "0");
     try {

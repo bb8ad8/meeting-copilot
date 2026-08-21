@@ -24,7 +24,7 @@ usage() {
   cat <<'EOF'
 Usage: ./scripts/open-gpt-participant.sh [options] MEETING_URL
 
-Opens a Google Meet or Zoom tab in the shared Meeting Copilot Chrome profile.
+Opens a Google Meet or Zoom tab in the shared Meetron Chrome profile.
 
 Environment variables:
   MEETING_COPILOT_CHROME_PATH   Override the Google Chrome .app path.
@@ -196,7 +196,7 @@ launch_chrome=1
 profile_pids="$(find_profile_pids)"
 if [ -n "$profile_pids" ]; then
   if [ "$restart_profile" -eq 1 ]; then
-    printf '[INFO] Restarting shared Meeting Copilot Chrome profile.\n'
+    printf '[INFO] Restarting shared Meetron Chrome profile.\n'
     for profile_pid in $profile_pids; do
       kill "$profile_pid" 2>/dev/null || true
     done
@@ -208,7 +208,7 @@ if [ -n "$profile_pids" ]; then
     done
   elif dedicated_endpoint_ready; then
     launch_chrome=0
-    printf '[INFO] Reusing shared Meeting Copilot Chrome profile.\n'
+    printf '[INFO] Reusing shared Meetron Chrome profile.\n'
   else
     printf 'The shared Chrome profile is running without its automation endpoint.\n' >&2
     printf 'Close it, then run the command again.\n' >&2
@@ -292,14 +292,14 @@ Meet camera state could not be determined automatically.
 Check that the camera is off, then join manually in the dedicated Chrome window.
 The meeting microphone remains muted until admission is detected.
 
-See docs/audio-routing.md for the full sequence.
+See README.md for the audio routing and verification sequence.
 EOF
     else
       cat <<EOF
 
 Meet admission was requested. The meeting microphone remains muted.
 
-See docs/audio-routing.md for the full sequence.
+See README.md for the audio routing and verification sequence.
 EOF
     fi
   else
@@ -308,18 +308,21 @@ EOF
 Browser prepared. Verify the pre-join screen, then request to join manually.
 The meeting microphone remains muted until the routing test is ready.
 
-See docs/audio-routing.md for the full sequence.
+See README.md for the audio routing and verification sequence.
 EOF
   fi
 else
+  audio_status="$(node "$repo_root/scripts/audio-backend.mjs" status)"
+  meeting_microphone="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).routing.meetingMicrophone.name)' "$audio_status")"
+  meeting_speaker="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).routing.meetingSpeaker.name)' "$audio_status")"
   cat <<EOF
 
 Browser opened. Before joining:
   1. Set the participant name to ${participant_name}.
-  2. Set microphone/input to BlackHole 16ch.
-  3. Set speaker/output to BlackHole 2ch.
+  2. Set microphone/input to ${meeting_microphone}.
+  3. Set speaker/output to ${meeting_speaker}.
   4. Keep the meeting microphone muted until the routing test is ready.
 
-See docs/audio-routing.md for the full sequence.
+See README.md for the audio routing and verification sequence.
 EOF
 fi

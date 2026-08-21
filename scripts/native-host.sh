@@ -37,7 +37,7 @@ if [ -z "$node_binary" ] || [ ! -x "$node_binary" ]; then
 fi
 
 if [ -z "$node_binary" ] || [ ! -x "$node_binary" ]; then
-  printf 'Meeting Copilot Native Host could not locate Node.js. Run install-control-ui.sh again.\n' >&2
+  printf 'Meetron Native Host could not locate Node.js. Run install-control-ui.sh again.\n' >&2
   exit 127
 fi
 

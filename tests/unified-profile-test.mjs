@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { chromium } from "playwright-core";
+import { connectToChromeOverCDP } from "../scripts/playwright-cdp.mjs";
 
 const execFileAsync = promisify(execFile);
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -85,7 +85,7 @@ try {
     throw new Error("A CDP endpoint from another profile was accepted.");
   }
 
-  browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
+  browser = await connectToChromeOverCDP(`http://127.0.0.1:${port}`);
   const context = browser.contexts()[0];
 
   const { stdout: internalPageOutput } = await execFileAsync(
@@ -114,12 +114,12 @@ try {
             const devices = await nativeEnumerateDevices();
             const output = devices.find((device) => device.kind === 'audiooutput');
             return output
-              ? [...devices, { kind: 'audiooutput', deviceId: output.deviceId, label: 'BlackHole 16ch (Virtual)' }]
+              ? [...devices, { kind: 'audiooutput', deviceId: output.deviceId, label: 'Meetron: AI to Meeting (Virtual)' }]
               : devices;
           };
         </script>
         <button aria-label="Open profile menu">Profile</button>
-        <textarea aria-label="New chat in Meeting Copilot"></textarea>
+        <textarea aria-label="New chat in Meetron"></textarea>
         <button aria-label="Start voice" onclick="
           window.__testVoiceContext = new AudioContext();
           window.__testAudioConstructorElement = new Audio();
@@ -152,6 +152,10 @@ try {
       `http://127.0.0.1:${port}`,
       "--project-url",
       "https://chatgpt.com/g/g-p-test/project",
+      "--output-device",
+      "Meetron: AI to Meeting",
+      "--output-device-uid",
+      "io.github.bb8ad8.meetron.audio.ai-to-meeting.device",
       "--replace-tab",
     ],
     { cwd: repoRoot, timeout: 30_000 },
@@ -165,7 +169,7 @@ try {
     result.status !== "voice-active" ||
     result.replacedTab !== true ||
     result.audioOutput?.routed !== true ||
-    !result.audioOutput?.device?.startsWith("BlackHole 16ch") ||
+    !result.audioOutput?.device?.startsWith("Meetron: AI to Meeting") ||
     result.audioOutput?.audioContexts !== 1 ||
     result.audioOutput?.mediaElements !== 2 ||
     result.audioOutput?.detachedMediaElements !== 2 ||
@@ -189,6 +193,10 @@ try {
         `http://127.0.0.1:${port}`,
         "--project-url",
         "https://chatgpt.com/g/g-p-failure/project",
+        "--output-device",
+        "Meetron: AI to Meeting",
+        "--output-device-uid",
+        "io.github.bb8ad8.meetron.audio.ai-to-meeting.device",
         "--replace-tab",
       ],
       { cwd: repoRoot, timeout: 30_000 },

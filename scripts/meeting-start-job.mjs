@@ -60,7 +60,7 @@ const baseState = {
 
 writeState({ ...baseState, status: "running" });
 
-const child = spawn(resolve(repoRoot, "scripts/start-meeting-copilot.sh"), [meetingUrl], {
+const child = spawn(resolve(repoRoot, "scripts/start-meetron.sh"), [meetingUrl], {
   cwd: repoRoot,
   env: process.env,
   stdio: "inherit",

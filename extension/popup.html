@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Meeting Copilot</title>
+    <title>Meetron</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
@@ -15,7 +15,7 @@
           </svg>
         </span>
         <div class="heading">
-          <h1>Meeting Copilot</h1>
+          <h1>Meetron</h1>
           <p data-host-status>ローカルホストへ接続しています</p>
         </div>
         <div class="header-actions">
@@ -88,10 +88,10 @@
 
           <section class="step" data-step="1" hidden>
             <h2>音声デバイス</h2>
-            <p class="step-copy">ChatGPTとMeetをつなぐBlackHoleを確認します。</p>
+            <p class="step-copy">ChatGPTと会議を安全につなぐ音声デバイスを確認します。</p>
             <div class="check-list">
-              <div class="check-row"><span class="check-indicator" data-device="BlackHole 2ch"></span><span>BlackHole 2ch</span><strong data-device-label="BlackHole 2ch">確認中</strong></div>
-              <div class="check-row"><span class="check-indicator" data-device="BlackHole 16ch"></span><span>BlackHole 16ch</span><strong data-device-label="BlackHole 16ch">確認中</strong></div>
+              <div class="check-row"><span class="check-indicator" data-device-index="0"></span><span data-device-name="0">会議 → AI</span><strong data-device-label-index="0">確認中</strong></div>
+              <div class="check-row"><span class="check-indicator" data-device-index="1"></span><span data-device-name="1">AI → 会議</span><strong data-device-label-index="1">確認中</strong></div>
               <div class="check-row"><span class="check-indicator" data-route-check></span><span>ChatGPT入力</span><strong data-route-label>未設定</strong></div>
             </div>
             <button class="wide" data-configure-audio type="button">ChatGPT入力を設定</button>
@@ -142,7 +142,7 @@
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
             </span>
             <h2>セットアップ完了</h2>
-            <p class="step-copy">Meeting Copilotを起動できます。</p>
+            <p class="step-copy">Meetronを起動できます。</p>
             <button class="wide" data-finish-setup type="button">Meet起動へ</button>
           </section>
         </div>

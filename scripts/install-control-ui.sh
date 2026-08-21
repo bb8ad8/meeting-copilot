@@ -10,7 +10,7 @@ usage() {
   cat <<'EOF'
 Usage: ./scripts/install-control-ui.sh [options]
 
-Registers the Meeting Copilot Native Messaging Host for Google Chrome.
+Registers the Meetron Native Messaging Host for Google Chrome.
 The unpacked extension is loaded once from chrome://extensions in Developer mode.
 
 Options:
@@ -92,7 +92,7 @@ manifest_json="$("$node_binary" -e '
   const [hostPath, extensionId] = process.argv.slice(1);
   process.stdout.write(`${JSON.stringify({
     name: "com.meeting_copilot.host",
-    description: "Meeting Copilot local control host",
+    description: "Meetron local control host",
     path: hostPath,
     type: "stdio",
     allowed_origins: [`chrome-extension://${extensionId}/`],
@@ -174,7 +174,7 @@ Load the controller extension in your regular Chrome from:
 
   $extension_dir
 
-Then open the shared Meeting Copilot Chrome setup page with:
+Then open the shared Meetron Chrome setup page with:
 
   $repo_root/scripts/open-control-ui-setup.sh
 

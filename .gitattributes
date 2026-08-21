@@ -2,3 +2,5 @@
 *.png binary
 *.jpg binary
 *.jpeg binary
+native/audio-driver/vendor/** linguist-vendored
+native/audio-driver/vendor/** whitespace=-trailing-space

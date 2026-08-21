@@ -28,10 +28,76 @@ for script in "$repo_root"/scripts/*.sh; do
   fi
 done
 
+if bash -n "$repo_root/Meetron Setup.command"; then
+  pass 'bash syntax: Meetron Setup.command'
+else
+  fail 'bash syntax: Meetron Setup.command'
+fi
+
 if "$repo_root/scripts/check-env.sh" --help >/dev/null; then
   pass 'check-env help'
 else
   fail 'check-env help'
+fi
+
+if "$repo_root/scripts/setup-meetron.sh" --help >/dev/null; then
+  pass 'Meetron setup help'
+else
+  fail 'Meetron setup help'
+fi
+
+fake_setup_bin="$temp_dir/setup-bin"
+fake_setup_pkg="$temp_dir/MeetronAudio-9.9.9.pkg"
+mkdir -p "$fake_setup_bin"
+touch "$fake_setup_pkg"
+cat > "$fake_setup_bin/pkgutil" <<'EOF'
+#!/usr/bin/env bash
+case "$1" in
+  --pkg-info) exit 1 ;;
+  --check-signature)
+    cat <<'SIGNATURE'
+Status: signed by a developer certificate issued by Apple for distribution
+Notarization: trusted by the Apple notary service
+Developer ID Installer: Yuki Inaba (SHDVCBHNJW)
+SIGNATURE
+    ;;
+  *) exit 2 ;;
+esac
+EOF
+cat > "$fake_setup_bin/spctl" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$fake_setup_bin/pkgutil" "$fake_setup_bin/spctl"
+
+if setup_pkg_output="$(PATH="$fake_setup_bin:/usr/bin:/bin" \
+  MEETRON_SETUP_PKG_PATH="$fake_setup_pkg" \
+  MEETRON_SETUP_NO_OPEN=1 \
+  "$repo_root/scripts/setup-meetron.sh" --check-only 2>&1)"; then
+  fail 'Meetron setup pauses for PKG installation'
+else
+  setup_status=$?
+  if [ "$setup_status" -eq 20 ] &&
+    printf '%s\n' "$setup_pkg_output" | grep -F 'PKGの署名と公証を確認しました' >/dev/null; then
+    pass 'Meetron setup verifies and locates a downloaded PKG'
+  else
+    fail 'Meetron setup verifies and locates a downloaded PKG'
+  fi
+fi
+
+if setup_download_output="$(PATH="$fake_setup_bin:/usr/bin:/bin" \
+  MEETRON_SETUP_PKG_PATH="$temp_dir/not-downloaded.pkg" \
+  MEETRON_SETUP_NO_OPEN=1 \
+  "$repo_root/scripts/setup-meetron.sh" --check-only 2>&1)"; then
+  fail 'Meetron setup pauses for PKG download'
+else
+  setup_status=$?
+  if [ "$setup_status" -eq 20 ] &&
+    printf '%s\n' "$setup_download_output" | grep -F 'GitHub Releases' >/dev/null; then
+    pass 'Meetron setup explains where to download the PKG'
+  else
+    fail 'Meetron setup explains where to download the PKG'
+  fi
 fi
 
 if "$repo_root/scripts/configure-audio.sh" --help >/dev/null; then
@@ -77,6 +143,7 @@ esac
 EOF
 chmod +x "$fake_audio_source"
 if configure_result="$(FAKE_AUDIO_STATE="$fake_audio_state" \
+  MEETING_COPILOT_AUDIOCTL="" \
   MEETING_COPILOT_SWITCH_AUDIO_SOURCE="$fake_audio_source" \
   MEETING_COPILOT_RUNTIME_DIR="$fake_audio_runtime" \
   "$repo_root/scripts/configure-audio.sh")" &&
@@ -93,6 +160,7 @@ else
 fi
 
 if FAKE_AUDIO_STATE="$fake_audio_state" \
+  MEETING_COPILOT_AUDIOCTL="" \
   MEETING_COPILOT_SWITCH_AUDIO_SOURCE="$fake_audio_source" \
   MEETING_COPILOT_RUNTIME_DIR="$fake_audio_runtime" \
   "$repo_root/scripts/restore-audio.sh" >/dev/null &&
@@ -147,9 +215,9 @@ if HOME="$uninstall_home" \
   MEETING_COPILOT_RUNTIME_DIR="$uninstall_runtime" \
   MEETING_COPILOT_PROFILE_DIR="$uninstall_home" \
   "$uninstall_repo/scripts/uninstall.sh" --remove-data --yes >/dev/null 2>&1; then
-  fail 'uninstaller rejects a profile path outside Meeting Copilot data'
+  fail 'uninstaller rejects a profile path outside Meetron data'
 elif [ -f "$uninstall_sentinel" ]; then
-  pass 'uninstaller protects paths outside Meeting Copilot data'
+  pass 'uninstaller protects paths outside Meetron data'
 else
   fail 'uninstaller preserved unrelated user data'
 fi
@@ -258,6 +326,12 @@ else
   fail 'Native Host protocol ping'
 fi
 
+if node "$repo_root/tests/audio-backend-test.mjs" >/dev/null; then
+  pass 'audio backend selection and route isolation'
+else
+  fail 'audio backend selection and route isolation'
+fi
+
 if node "$repo_root/tests/session-cancel-test.mjs" >/dev/null; then
   pass 'session stop cancels an in-progress launch'
 else
@@ -268,6 +342,12 @@ if node "$repo_root/tests/service-worker-test.mjs" >/dev/null; then
   pass 'service worker sender authorization'
 else
   fail 'service worker sender authorization'
+fi
+
+if node "$repo_root/tests/playwright-cdp-test.mjs" >/dev/null; then
+  pass 'Playwright CDP compatibility defaults'
+else
+  fail 'Playwright CDP compatibility defaults'
 fi
 
 if [ "${MEETING_COPILOT_SKIP_BROWSER_TEST:-0}" = "1" ]; then

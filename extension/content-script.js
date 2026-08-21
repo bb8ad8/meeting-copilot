@@ -111,12 +111,12 @@
         .diagnostics { color: #e8eaed; background: #292a2d; }
       }
     </style>
-    <section class="panel" aria-label="Meeting Copilot controls">
+    <section class="panel" aria-label="Meetron controls">
       <header class="header">
         <div class="brand">
           <span class="brand-icon">${icon("activity", 17)}</span>
           <span class="status-dot" data-status-dot></span>
-          <span class="brand-text">Meeting Copilot</span>
+          <span class="brand-text">Meetron</span>
         </div>
         <button class="icon-button" data-mic-quick type="button" title="GPT参加者のマイクを切り替える" aria-label="GPT参加者のマイクを切り替える">${icon("micOff")}</button>
         <button class="icon-button" data-expand type="button" title="パネルを折りたたむ" aria-label="パネルを折りたたむ">${icon("chevronDown")}</button>
@@ -292,7 +292,10 @@
   }
 
   async function nativeRequest(type, payload = {}) {
-    const response = await chrome.runtime.sendMessage({
+    if (typeof globalThis.chrome?.runtime?.sendMessage !== "function") {
+      throw new Error("Meetron拡張機能を再読み込みしてからページを更新してください");
+    }
+    const response = await globalThis.chrome.runtime.sendMessage({
       channel: "meeting-copilot",
       type: "native-request",
       request: { type, payload },

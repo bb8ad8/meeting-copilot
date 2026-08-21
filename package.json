@@ -1,8 +1,8 @@
 {
-  "name": "meeting-copilot",
-  "version": "0.7.2",
+  "name": "meetron",
+  "version": "0.8.0",
   "private": true,
-  "description": "Local macOS bridge between ChatGPT Voice and web meetings",
+  "description": "Meetron: a local macOS bridge between ChatGPT Voice and web meetings",
   "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
@@ -13,7 +13,7 @@
   },
   "homepage": "https://github.com/bb8ad8/meeting-copilot#readme",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "os": [
     "darwin"
@@ -27,7 +27,11 @@
   ],
   "type": "module",
   "scripts": {
-    "test": "./tests/scripts-test.sh"
+    "build:audio": "./scripts/build-audio-control.sh && ./native/audio-driver/build-driver.sh",
+    "package:audio": "./native/audio-driver/package-driver.sh",
+    "test": "./tests/scripts-test.sh",
+    "test:native": "./native/audio-driver/test-driver.sh",
+    "test:package": "./native/audio-driver/test-package.sh"
   },
   "dependencies": {
     "playwright-core": "1.62.1"

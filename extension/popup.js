@@ -17,7 +17,12 @@ const nextButton = document.querySelector("[data-next-step]");
 const setupNav = document.querySelector(".setup-nav");
 const bootstrapCommand = document.querySelector("[data-bootstrap-command]");
 
-const extensionId = chrome.runtime.id || "jlikakgdldiihhflkobhnpfegjlcakdd";
+const extensionRuntime = globalThis.chrome?.runtime;
+const extensionStorage = globalThis.chrome?.storage;
+const extensionEnvironmentReady =
+  typeof extensionRuntime?.sendMessage === "function" &&
+  typeof extensionStorage?.local?.get === "function";
+const extensionId = extensionRuntime?.id || "jlikakgdldiihhflkobhnpfegjlcakdd";
 const automaticBootstrapCommand =
   `EXTENSION_DIR="$(for p in "$HOME/Library/Application Support/Google/Chrome"/*/"Secure Preferences"; do /usr/bin/plutil -extract extensions.settings.${extensionId}.path raw "$p" 2>/dev/null && break; done)" && REPO_DIR="$(dirname "$EXTENSION_DIR")" && cd "$REPO_DIR" && npm install && ./scripts/open-control-ui-setup.sh`;
 bootstrapCommand.textContent = automaticBootstrapCommand;
@@ -55,7 +60,12 @@ function normalizeMeetingUrl(value) {
 }
 
 async function nativeRequest(type, payload = {}) {
-  const response = await chrome.runtime.sendMessage({
+  if (typeof extensionRuntime?.sendMessage !== "function") {
+    throw new Error(
+      "MeetronをChromeの拡張機能メニューから開き直してください。直らない場合はchrome://extensionsでMeetronを再読み込みしてください。",
+    );
+  }
+  const response = await extensionRuntime.sendMessage({
     channel: "meeting-copilot",
     type: "native-request",
     request: { type, payload },
@@ -185,10 +195,12 @@ function renderSetup() {
   }
 
   const requiredDevices = setupStatus?.audio?.requiredDevices || {};
-  for (const name of ["BlackHole 2ch", "BlackHole 16ch"]) {
+  const requiredDeviceNames = setupStatus?.audio?.requiredDeviceNames || Object.keys(requiredDevices);
+  for (const [index, name] of requiredDeviceNames.slice(0, 2).entries()) {
+    document.querySelector(`[data-device-name="${index}"]`).textContent = name;
     setCheck(
-      document.querySelector(`[data-device="${name}"]`),
-      document.querySelector(`[data-device-label="${name}"]`),
+      document.querySelector(`[data-device-index="${index}"]`),
+      document.querySelector(`[data-device-label-index="${index}"]`),
       requiredDevices[name] === true,
       "検出済み",
       "未検出",
@@ -249,7 +261,7 @@ async function refresh({ preserveStep = false } = {}) {
     setupStep = 0;
     hostStatus.textContent = "ローカルホスト未接続";
     statusDot.className = "status-dot error";
-    setSetupMessage("表示されたコマンドを実行してから再確認してください", "error");
+    setSetupMessage(error.message || "表示されたコマンドを実行してから再確認してください", "error");
     renderSetup();
   }
 }
@@ -406,8 +418,19 @@ document.querySelector("[data-finish-setup]").addEventListener("click", async ()
   await refresh();
 });
 
-chrome.storage.local.get(["lastMeetingUrl"]).then(({ lastMeetingUrl }) => {
-  if (lastMeetingUrl) meetingInput.value = lastMeetingUrl;
-});
-
-refresh();
+if (extensionEnvironmentReady) {
+  extensionStorage.local.get(["lastMeetingUrl"]).then(({ lastMeetingUrl }) => {
+    if (lastMeetingUrl) meetingInput.value = lastMeetingUrl;
+  });
+  refresh();
+} else {
+  forceSetup = true;
+  setupStep = 0;
+  hostStatus.textContent = "Chrome拡張機能として開かれていません";
+  statusDot.className = "status-dot error";
+  setSetupMessage(
+    "MeetronをChromeの拡張機能メニューから開き直してください。直らない場合はchrome://extensionsでMeetronを再読み込みしてください。",
+    "error",
+  );
+  renderSetup();
+}

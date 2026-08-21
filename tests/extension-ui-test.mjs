@@ -43,8 +43,8 @@ await context.addInitScript(() => {
                   ready: true,
                   devicesReady: true,
                   requiredDevices: {
-                    "BlackHole 2ch": true,
-                    "BlackHole 16ch": true,
+                    "Meetron: Meeting to AI": true,
+                    "Meetron: AI to Meeting": true,
                   },
                 },
                 project: { configured: false, url: "" },
@@ -68,8 +68,8 @@ await context.addInitScript(() => {
                   ready: false,
                   devicesReady: false,
                   requiredDevices: {
-                    "BlackHole 2ch": true,
-                    "BlackHole 16ch": false,
+                    "Meetron: Meeting to AI": true,
+                    "Meetron: AI to Meeting": false,
                   },
                 },
                 project: { configured: false, url: "" },
@@ -269,7 +269,7 @@ const setupResult = await setupPopup.evaluate(() => ({
   launchHidden: document.querySelector("[data-launch-view]").hidden,
   setupHidden: document.querySelector("[data-setup-view]").hidden,
   step: document.querySelector("[data-step-count]").textContent,
-  outputStatus: document.querySelector('[data-device-label="BlackHole 16ch"]').textContent,
+  outputStatus: document.querySelector('[data-device-label-index="1"]').textContent,
   nextDisabled: document.querySelector("[data-next-step]").disabled,
 }));
 if (
@@ -329,5 +329,30 @@ if (
   throw new Error(`Disconnected setup did not provide an automatic install path: ${JSON.stringify(disconnectedResult)}`);
 }
 await disconnectedPopup.screenshot({ path: "/tmp/meeting-copilot-disconnected-setup-ui.png" });
+
+const unavailableRuntimePopup = await context.newPage();
+const runtimeErrors = [];
+unavailableRuntimePopup.on("pageerror", (error) => runtimeErrors.push(error.message));
+await unavailableRuntimePopup.setContent(popupHtml);
+await unavailableRuntimePopup.addStyleTag({
+  content: await readFile(resolve(repoRoot, "extension/popup.css"), "utf8"),
+});
+await unavailableRuntimePopup.evaluate(() => {
+  delete globalThis.chrome.runtime.sendMessage;
+});
+await unavailableRuntimePopup.evaluate(await readFile(resolve(repoRoot, "extension/popup.js"), "utf8"));
+const unavailableRuntimeResult = await unavailableRuntimePopup.evaluate(() => ({
+  hostStatus: document.querySelector("[data-host-status]").textContent,
+  setupMessage: document.querySelector("[data-setup-message]").textContent,
+}));
+if (
+  runtimeErrors.length > 0 ||
+  unavailableRuntimeResult.hostStatus !== "Chrome拡張機能として開かれていません" ||
+  !unavailableRuntimeResult.setupMessage.includes("拡張機能メニューから開き直してください")
+) {
+  throw new Error(
+    `Missing Chrome runtime was not handled: ${JSON.stringify({ unavailableRuntimeResult, runtimeErrors })}`,
+  );
+}
 await browser.close();
 process.stdout.write("Extension panel, launcher, and setup wizard UI tests passed.\n");

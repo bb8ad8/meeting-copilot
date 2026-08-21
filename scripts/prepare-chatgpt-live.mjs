@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 
-import { chromium } from "playwright-core";
+import { getAudioStatus } from "./audio-backend.mjs";
+import { connectToChromeOverCDP } from "./playwright-cdp.mjs";
 
 const args = process.argv.slice(2);
 const options = {
   cdp: "http://127.0.0.1:9223",
   projectUrl: "",
   replaceTab: false,
-  outputDevice: "BlackHole 16ch",
+  outputDevice: "",
+  outputDeviceUID: "",
 };
 
 function usage() {
-  process.stdout.write(`Usage: node scripts/prepare-chatgpt-live.mjs [options]\n\nOptions:\n  --cdp URL            Chrome DevTools endpoint (default: ${options.cdp})\n  --project-url URL    ChatGPT Project landing URL\n  --output-device NAME ChatGPT Voice output device (default: ${options.outputDevice})\n  --replace-tab        Close only existing ChatGPT tabs before starting Voice\n  -h, --help           Show this help\n`);
+  process.stdout.write(`Usage: node scripts/prepare-chatgpt-live.mjs [options]\n\nOptions:\n  --cdp URL                Chrome DevTools endpoint (default: ${options.cdp})\n  --project-url URL        ChatGPT Project landing URL\n  --output-device NAME     Override the ChatGPT Voice output device\n  --output-device-uid UID  Core Audio UID used by the safety check\n  --replace-tab            Close only existing ChatGPT tabs before starting Voice\n  -h, --help               Show this help\n`);
 }
 
 for (let index = 0; index < args.length; index += 1) {
@@ -25,6 +27,9 @@ for (let index = 0; index < args.length; index += 1) {
       break;
     case "--output-device":
       options.outputDevice = args[++index] || "";
+      break;
+    case "--output-device-uid":
+      options.outputDeviceUID = args[++index] || "";
       break;
     case "--replace-tab":
       options.replaceTab = true;
@@ -46,7 +51,13 @@ if (!/^https:\/\/chatgpt\.com\/g\/g-p-[^/]+\/project(?:[/?#]|$)/.test(options.pr
   process.exit(2);
 }
 
-const browser = await chromium.connectOverCDP(options.cdp);
+if (!options.outputDevice) {
+  const audio = await getAudioStatus();
+  options.outputDevice = audio.routing.chatgptOutput.name;
+  options.outputDeviceUID = audio.routing.chatgptOutput.uid;
+}
+
+const browser = await connectToChromeOverCDP(options.cdp);
 const contexts = browser.contexts();
 if (contexts.length === 0) {
   throw new Error("Chrome did not expose a browser context.");
@@ -89,7 +100,12 @@ function normalizedDeviceName(value) {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-async function inspectChromeAudioOutputs(browserInstance, browserContext, expectedDeviceLabel) {
+async function inspectChromeAudioOutputs(
+  browserInstance,
+  browserContext,
+  expectedDeviceLabel,
+  expectedDeviceUID,
+) {
   const session = await browserInstance.newBrowserCDPSession();
   const pagePromise = browserContext.waitForEvent("page", {
     predicate: (candidate) => candidate.url().startsWith("chrome://media-internals"),
@@ -132,7 +148,10 @@ async function inspectChromeAudioOutputs(browserInstance, browserContext, expect
       controllers.push(properties);
     }
 
-    const expectedDevice = normalizedDeviceName(expectedDeviceLabel).replace(/virtual$/, "");
+    const expectedDevices = [
+      normalizedDeviceName(expectedDeviceUID),
+      normalizedDeviceName(expectedDeviceLabel).replace(/virtual$/, ""),
+    ].filter(Boolean);
     const activeChatgptOutputs = controllers.filter(
       (controller) =>
         String(controller.status).toLowerCase() === "started" &&
@@ -140,12 +159,14 @@ async function inspectChromeAudioOutputs(browserInstance, browserContext, expect
     );
     const unexpectedOutputs = activeChatgptOutputs.filter((controller) => {
       const actualDevice = normalizedDeviceName(controller.device_id);
-      return !actualDevice.includes(expectedDevice);
+      return !expectedDevices.some((expectedDevice) =>
+        actualDevice.includes(expectedDevice) || expectedDevice.includes(actualDevice));
     });
 
     return {
       checked: true,
       expectedDevice: expectedDeviceLabel,
+      expectedDeviceUID,
       activeChatgptOutputs: activeChatgptOutputs.map((controller) => ({
         deviceId: controller.device_id || "",
         status: controller.status || "",
@@ -378,7 +399,12 @@ try {
     );
   }
 
-  internalAudioOutput = await inspectChromeAudioOutputs(browser, context, outputDevice.label);
+  internalAudioOutput = await inspectChromeAudioOutputs(
+    browser,
+    context,
+    outputDevice.label,
+    options.outputDeviceUID,
+  );
   await page.evaluate((validation) => {
     const state = globalThis.__meetingCopilotAudioRouting;
     if (state) state.internalAudioOutput = validation;

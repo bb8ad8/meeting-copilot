@@ -9,7 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  platform-tests:
+    name: test (${{ matrix.runner }})
     strategy:
       fail-fast: false
       matrix:
@@ -30,3 +31,11 @@ jobs:
       - run: npm run package:audio
       - run: npm run test:package
       - run: npm audit --audit-level=high
+
+  test:
+    if: always()
+    needs: platform-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every macOS test job to pass
+        run: test '${{ needs.platform-tests.result }}' = 'success'
